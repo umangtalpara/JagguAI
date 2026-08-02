@@ -1,0 +1,8 @@
+---
+description: Core project conventions
+alwaysApply: true
+---
+Follow @AGENTS.md.
+Refer to @.ai/settings.json for the active stack.
+Stack & architecture rules: @.ai/context/tech-stack.md, @.ai/context/architecture-rules.md.
+Coding & naming conventions: @.ai/context/coding-rules.md, @.ai/context/naming-rules.md.

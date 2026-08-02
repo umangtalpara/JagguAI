@@ -1,0 +1,5 @@
+---
+description: Project rules and conventions for ui-guidelines
+alwaysApply: true
+---
+Follow the conventions and guidelines specified in @.ai/context/ui-guidelines.md.

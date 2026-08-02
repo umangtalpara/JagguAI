@@ -1,0 +1,98 @@
+{
+  "version": "1.0.0",
+  "project": {
+    "name": "SaaS AI Factory",
+    "description": "Autonomous multi-agent software factory for PRD-to-SaaS application development",
+    "organization": "ProvenPeak Solutions",
+    "created": "2026-05-25",
+    "status": "initialized"
+  },
+  "agents": {
+    "super-agent": {
+      "role": "Master Controller & Orchestrator",
+      "file": "agents/super-agent.md"
+    },
+    "deep-plan-agent": {
+      "role": "Strategic Planning & Architecture",
+      "file": "agents/deep-plan-agent.md"
+    },
+    "backend-agent": {
+      "role": "Backend Development",
+      "file": "agents/backend-agent.md"
+    },
+    "frontend-agent": {
+      "role": "Frontend Development",
+      "file": "agents/frontend-agent.md"
+    },
+    "qa-agent": {
+      "role": "Quality Assurance & Testing",
+      "file": "agents/qa-agent.md"
+    },
+    "code-review-agent": {
+      "role": "Code Review & Security Audit",
+      "file": "agents/code-review-agent.md"
+    }
+  },
+  "workflow": {
+    "pipeline": [
+      "prd-to-plan",
+      "roadmap-to-phase",
+      "phase-execution",
+      "testing",
+      "deployment"
+    ]
+  },
+  "tech_stack": {
+    "backend": {
+      "runtime": "Node.js 24 LTS",
+      "framework": "NestJS 11.x",
+      "language": "TypeScript 5.x",
+      "databases": [
+        "MongoDB 7.x"
+      ],
+      "orm_odm": "Mongoose 8.x",
+      "cache": "Redis 7.x",
+      "queue": "BullMQ (Redis-backed)",
+      "containerization": "Docker",
+      "api_docs": "Swagger/OpenAPI 3.0"
+    },
+    "frontend": {
+      "framework": "Next.js 14.x",
+      "library": "React 18.x",
+      "language": "TypeScript 5.x",
+      "styling": "Tailwind CSS 3.x",
+      "components": "Shadcn UI (Latest)",
+      "state": "Zustand 4.x",
+      "animations": "Framer Motion 11.x"
+    },
+    "testing": {
+      "unit": "Jest 29.x",
+      "integration": "Supertest (Latest)",
+      "e2e": "Playwright (Latest)",
+      "api": "Postman/Newman"
+    },
+    "devops": {
+      "ci_cd": "GitHub Actions",
+      "containerization": "Docker + Docker Compose (Latest)",
+      "monitoring": "Prometheus (Latest) + Grafana (Latest)",
+      "logging": "Winston 3.x + ELK (Latest)"
+    }
+  },
+  "paths": {
+    "agents": ".ai/agents",
+    "skills": ".ai/skills",
+    "workflows": ".ai/workflows",
+    "context": ".ai/context",
+    "memory": ".ai/memory",
+    "project_management": ".ai/project-management",
+    "templates": ".ai/templates",
+    "prd": "doc/prd.md",
+    "source_backend": "codebase/backend",
+    "source_frontend": "codebase/frontend",
+    "tests": "tests"
+  },
+  "git_remotes": {
+    "backend": "git@github.com:yourusername/backend-only-repo.git",
+    "frontend": "git@github.com:yourusername/frontend-only-repo.git"
+  }
+}

@@ -1,0 +1,5 @@
+---
+description: Project rules and conventions for naming-rules
+alwaysApply: true
+---
+Follow the conventions and guidelines specified in @.ai/context/naming-rules.md.

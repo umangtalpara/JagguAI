@@ -1,0 +1,5 @@
+---
+description: Project rules and conventions for project-context
+alwaysApply: true
+---
+Follow the conventions and guidelines specified in @.ai/context/project-context.md.

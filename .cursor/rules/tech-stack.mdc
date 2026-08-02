@@ -1,0 +1,5 @@
+---
+description: Project rules and conventions for tech-stack
+alwaysApply: true
+---
+Follow the conventions and guidelines specified in @.ai/context/tech-stack.md.
