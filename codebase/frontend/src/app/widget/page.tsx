@@ -26,6 +26,17 @@ function WidgetContent() {
   const [inputText, setInputText] = useState('');
   const [streaming, setStreaming] = useState(false);
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  // Lead capture state
+  const [leadCaptured, setLeadCaptured] = useState(false);
+  const [leadEmail, setLeadEmail] = useState('');
+  const [leadName, setLeadName] = useState('');
+
+  // Voice recording state
+  const [recording, setRecording] = useState(false);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
 
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
@@ -51,6 +62,9 @@ function WidgetContent() {
       localStorage.setItem('jagu-visitor-id', storedVid);
     }
     setVisitorId(storedVid);
+
+    const isCaptured = localStorage.getItem('jagu-lead-captured') === 'true';
+    setLeadCaptured(isCaptured);
 
     fetch(`${API_BASE}/widget/config?apiKey=${apiKey}`)
       .then(res => {
@@ -85,6 +99,108 @@ function WidgetContent() {
         setError(err instanceof Error ? err.message : 'Failed to connect');
       });
   }, [apiKey]);
+
+  const handleLeadSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!leadEmail.trim() || !config) {
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/widget/workspaces/${config.workspaceId}/leads`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          visitorId,
+          email: leadEmail,
+          name: leadName,
+        }),
+      });
+      if (res.ok) {
+        localStorage.setItem('jagu-lead-captured', 'true');
+        setLeadCaptured(true);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+      mediaRecorderRef.current = mediaRecorder;
+      audioChunksRef.current = [];
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+
+      mediaRecorder.onstop = async () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        if (!config) return;
+        setStreaming(true);
+
+        const formData = new FormData();
+        formData.append('file', audioBlob, 'recording.webm');
+        formData.append('visitorId', visitorId);
+
+        try {
+          setMessages(prev => [...prev, { sender: 'visitor', content: '🎙️ Transcribing voice message...' }]);
+
+          const res = await fetch(`${API_BASE}/voice/workspaces/${config.workspaceId}/process`, {
+            method: 'POST',
+            body: formData,
+          });
+
+          if (!res.ok) {
+            throw new Error('Failed to process voice');
+          }
+
+          const transcribedText = decodeURIComponent(res.headers.get('X-Transcribed-Text') || '');
+          const responseText = decodeURIComponent(res.headers.get('X-Response-Text') || '');
+
+          const audioArrayBuffer = await res.arrayBuffer();
+          const audioBlobUrl = URL.createObjectURL(new Blob([audioArrayBuffer], { type: 'audio/mpeg' }));
+          const audioPlayer = new Audio(audioBlobUrl);
+          audioPlayer.play();
+
+          setMessages(prev => {
+            const copy = [...prev];
+            const lastIndex = copy.length - 1;
+            if (copy[lastIndex]) {
+              copy[lastIndex].content = `🎙️ ${transcribedText}`;
+            }
+            return [...copy, { sender: 'assistant', content: responseText }];
+          });
+
+        } catch (err) {
+          console.error(err);
+          setMessages(prev => [...prev, { sender: 'assistant', content: 'Sorry, I failed to process your voice input.' }]);
+        } finally {
+          setStreaming(false);
+        }
+
+        stream.getTracks().forEach(track => track.stop());
+      };
+
+      mediaRecorder.start();
+      setRecording(true);
+    } catch (err) {
+      console.error('Failed to start voice recording:', err);
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && recording) {
+      mediaRecorderRef.current.stop();
+      setRecording(false);
+    }
+  };
 
   const handleSend = (text: string) => {
     if (!text.trim() || !config || streaming) {
@@ -163,74 +279,136 @@ function WidgetContent() {
         </button>
       </div>
 
-      <div className="flex-1 p-4 overflow-y-auto space-y-4 bg-slate-950/60 scrollbar-thin scrollbar-thumb-white/5">
-        {messages.map((msg, index) => {
-          const isBot = msg.sender === 'assistant';
-          return (
-            <div key={index} className={`flex gap-2.5 ${isBot ? '' : 'flex-row-reverse'}`}>
-              <div className={`h-7 w-7 rounded-full flex items-center justify-center text-[10px] font-bold text-white/90 border border-white/5 ${
-                isBot ? 'bg-slate-900' : 'bg-primary/20 text-primary'
-              }`}>
-                {isBot ? 'AI' : 'ME'}
-              </div>
-              <div className={`max-w-[75%] p-3.5 rounded-2xl text-xs leading-relaxed border ${
-                isBot
-                  ? 'bg-slate-900/60 border-white/5 text-slate-100 rounded-bl-none'
-                  : 'bg-primary/10 border-primary/20 text-white rounded-br-none'
-              }`}>
-                {msg.content || (
-                  <div className="flex gap-1.5 py-1">
-                    <div className="w-1.5 h-1.5 bg-white/40 rounded-full animate-bounce" />
-                    <div className="w-1.5 h-1.5 bg-white/40 rounded-full animate-bounce [animation-delay:0.2s]" />
-                    <div className="w-1.5 h-1.5 bg-white/40 rounded-full animate-bounce [animation-delay:0.4s]" />
-                  </div>
-                )}
-              </div>
+      {!leadCaptured ? (
+        <div className="flex-1 flex flex-col justify-center p-6 bg-slate-950/80 backdrop-blur-md">
+          <form onSubmit={handleLeadSubmit} className="space-y-4">
+            <div className="text-center space-y-1.5 mb-6">
+              <h4 className="text-sm font-bold text-white">Let's get started!</h4>
+              <p className="text-[10px] text-slate-400">Please introduce yourself to start chatting with support.</p>
             </div>
-          );
-        })}
-        <div ref={messagesEndRef} />
-      </div>
+            
+            <div className="space-y-1">
+              <label className="text-[10px] text-slate-400 block font-medium">Name</label>
+              <input
+                type="text"
+                required
+                value={leadName}
+                onChange={(e) => setLeadName(e.target.value)}
+                placeholder="John Doe"
+                className="w-full bg-white/5 border border-white/10 focus:border-primary/50 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none transition-all"
+              />
+            </div>
 
-      {messages.length === 1 && config.suggestedQuestions.length > 0 && (
-        <div className="px-4 pb-2 space-y-1.5">
-          {config.suggestedQuestions.map((q, idx) => (
+            <div className="space-y-1">
+              <label className="text-[10px] text-slate-400 block font-medium">Email Address</label>
+              <input
+                type="email"
+                required
+                value={leadEmail}
+                onChange={(e) => setLeadEmail(e.target.value)}
+                placeholder="john@example.com"
+                className="w-full bg-white/5 border border-white/10 focus:border-primary/50 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none transition-all"
+              />
+            </div>
+
             <button
-              key={idx}
-              onClick={() => handleSend(q)}
-              className="block w-full text-left px-3.5 py-2 bg-slate-900/40 hover:bg-slate-900 border border-white/5 hover:border-primary/20 rounded-xl text-[10px] text-primary truncate transition-all duration-200"
+              type="submit"
+              disabled={loading}
+              style={{ backgroundColor: config.primaryColor }}
+              className="w-full py-2.5 rounded-xl text-xs font-bold text-primary-foreground hover:opacity-90 disabled:opacity-50 transition-opacity"
             >
-              {q}
+              {loading ? 'Submitting...' : 'Start Chat'}
             </button>
-          ))}
+          </form>
         </div>
-      )}
+      ) : (
+        <>
+          <div className="flex-1 p-4 overflow-y-auto space-y-4 bg-slate-950/60 scrollbar-thin scrollbar-thumb-white/5">
+            {messages.map((msg, index) => {
+              const isBot = msg.sender === 'assistant';
+              return (
+                <div key={index} className={`flex gap-2.5 ${isBot ? '' : 'flex-row-reverse'}`}>
+                  <div className={`h-7 w-7 rounded-full flex items-center justify-center text-[10px] font-bold text-white/90 border border-white/5 ${
+                    isBot ? 'bg-slate-900' : 'bg-primary/20 text-primary'
+                  }`}>
+                    {isBot ? 'AI' : 'ME'}
+                  </div>
+                  <div className={`max-w-[75%] p-3.5 rounded-2xl text-xs leading-relaxed border ${
+                    isBot
+                      ? 'bg-slate-900/60 border-white/5 text-slate-100 rounded-bl-none'
+                      : 'bg-primary/10 border-primary/20 text-white rounded-br-none'
+                  }`}>
+                    {msg.content || (
+                      <div className="flex gap-1.5 py-1">
+                        <div className="w-1.5 h-1.5 bg-white/40 rounded-full animate-bounce" />
+                        <div className="w-1.5 h-1.5 bg-white/40 rounded-full animate-bounce [animation-delay:0.2s]" />
+                        <div className="w-1.5 h-1.5 bg-white/40 rounded-full animate-bounce [animation-delay:0.4s]" />
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+            <div ref={messagesEndRef} />
+          </div>
 
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          handleSend(inputText);
-        }}
-        className="p-3 border-t border-white/5 bg-slate-950 flex gap-2"
-      >
-        <input
-          type="text"
-          value={inputText}
-          onChange={(e) => setInputText(e.target.value)}
-          placeholder="Ask me anything..."
-          className="flex-1 bg-white/5 focus:bg-white/10 border border-white/5 focus:border-primary/40 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none transition-all duration-200"
-        />
-        <button
-          type="submit"
-          disabled={streaming || !inputText.trim()}
-          className="p-2.5 rounded-xl flex items-center justify-center text-primary-foreground disabled:opacity-50 transition-opacity"
-          style={{ backgroundColor: config.primaryColor }}
-        >
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M14 5l7 7m0 0l-7 7m7-7H3" />
-          </svg>
-        </button>
-      </form>
+          {messages.length === 1 && config.suggestedQuestions.length > 0 && (
+            <div className="px-4 pb-2 space-y-1.5">
+              {config.suggestedQuestions.map((q, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => handleSend(q)}
+                  className="block w-full text-left px-3.5 py-2 bg-slate-900/40 hover:bg-slate-900 border border-white/5 hover:border-primary/20 rounded-xl text-[10px] text-primary truncate transition-all duration-200"
+                >
+                  {q}
+                </button>
+              ))}
+            </div>
+          )}
+
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleSend(inputText);
+            }}
+            className="p-3 border-t border-white/5 bg-slate-950 flex gap-2"
+          >
+            <input
+              type="text"
+              value={inputText}
+              onChange={(e) => setInputText(e.target.value)}
+              placeholder="Ask me anything..."
+              className="flex-1 bg-white/5 focus:bg-white/10 border border-white/5 focus:border-primary/40 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none transition-all duration-200"
+            />
+            
+            {/* Microphone Toggle Button */}
+            <button
+              type="button"
+              onClick={recording ? stopRecording : startRecording}
+              className={`p-2.5 rounded-xl flex items-center justify-center border transition-all ${
+                recording 
+                  ? 'bg-red-500/10 border-red-500 text-red-500 animate-pulse'
+                  : 'bg-white/5 border-white/5 hover:border-white/10 text-slate-400 hover:text-white'
+              }`}
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+              </svg>
+            </button>
+
+            <button
+              type="submit"
+              disabled={streaming || !inputText.trim()}
+              className="p-2.5 rounded-xl flex items-center justify-center text-primary-foreground disabled:opacity-50 transition-opacity"
+              style={{ backgroundColor: config.primaryColor }}
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+              </svg>
+            </button>
+          </form>
+        </>
+      )}
     </div>
   );
 }

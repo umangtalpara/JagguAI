@@ -14,6 +14,8 @@ import { CrawlerModule } from './modules/crawler/crawler.module';
 import { OpenaiLlmModule } from './modules/openai-llm/openai-llm.module';
 import { ChatModule } from './modules/chat/chat.module';
 import { WidgetModule } from './modules/widget/widget.module';
+import { VoiceModule } from './modules/voice/voice.module';
+import { AnalyticsModule } from './modules/analytics/analytics.module';
 
 @Module({
   imports: [
@@ -34,6 +36,10 @@ import { WidgetModule } from './modules/widget/widget.module';
         LLM_MODEL: Joi.string().default('qwen-3'),
         QDRANT_URL: Joi.string().optional(),
         QDRANT_API_KEY: Joi.string().optional(),
+        
+        DEEPGRAM_API_KEY: Joi.string().optional(),
+        KOKORO_BASE_URL: Joi.string().optional(),
+        KOKORO_VOICE: Joi.string().optional(),
       }),
     }),
     MongooseModule.forRootAsync({
@@ -63,6 +69,8 @@ import { WidgetModule } from './modules/widget/widget.module';
     OpenaiLlmModule,
     ChatModule,
     WidgetModule,
+    VoiceModule,
+    AnalyticsModule,
   ],
 })
 export class AppModule {}

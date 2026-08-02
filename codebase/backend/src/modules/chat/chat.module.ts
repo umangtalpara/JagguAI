@@ -8,6 +8,7 @@ import { Message, MessageSchema } from './entities/message.entity';
 import { EmbeddingsModule } from '../embeddings/embeddings.module';
 import { QdrantModule } from '../qdrant/qdrant.module';
 import { OpenaiLlmModule } from '../openai-llm/openai-llm.module';
+import { AnalyticsModule } from '../analytics/analytics.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { OpenaiLlmModule } from '../openai-llm/openai-llm.module';
     EmbeddingsModule,
     QdrantModule,
     OpenaiLlmModule,
+    AnalyticsModule,
   ],
   controllers: [ChatController],
   providers: [ChatService, ChatRepository],

@@ -14,3 +14,7 @@
 | PHASE-02-TASK-003 | Qdrant Vector DB & HuggingFace Embeddings | backend-agent | 2026-08-02 |  |
 | PHASE-02-TASK-004 | Qwen 3 LLM Chat SSE Stream | backend-agent | 2026-08-02 |  |
 | PHASE-02-TASK-005 | Widget Script Loader & Next.js Chat Widget | frontend-agent | 2026-08-02 |  |
+| PHASE-03-TASK-001 | Deepgram STT & Kokoro TTS Audio Pipelines | backend-agent | 2026-08-02 |  |
+| PHASE-03-TASK-002 | Mongoose Analytics logs & Leads capturing | backend-agent | 2026-08-02 |  |
+| PHASE-03-TASK-003 | Frontend Dashboard metrics cards & leads grid | frontend-agent | 2026-08-02 |  |
+| PHASE-03-TASK-004 | Widget intake lead forms & media recording | frontend-agent | 2026-08-02 |  |

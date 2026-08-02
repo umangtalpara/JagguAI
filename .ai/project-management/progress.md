@@ -7,20 +7,21 @@
 ## Overall Progress
 
 ```
-Total:     [████████████████████] 100%  (8/8 tasks)
+Total:     [████████████████████] 100%  (12/12 tasks)
 PHASE-01:   COMPLETED (100%)
 PHASE-02:   COMPLETED (100%)
+PHASE-03:   COMPLETED (100%)
 ```
 
 ## Progress by Agent
 
 | Agent | Assigned | Completed | In Progress | Failed | Blocked |
 |-------|----------|-----------|-------------|--------|---------|
-| backend-agent | 6 | 6 | 0 | 0 | 0 |
-| frontend-agent | 2 | 2 | 0 | 0 | 0 |
+| backend-agent | 8 | 8 | 0 | 0 | 0 |
+| frontend-agent | 4 | 4 | 0 | 0 | 0 |
 | qa-agent | 0 | 0 | 0 | 0 | 0 |
 | code-review-agent | 0 | 0 | 0 | 0 | 0 |
-| **Total** | **8** | **8** | **0** | **0** | **0** |
+| **Total** | **12** | **12** | **0** | **0** | **0** |
 
 ## Task Status Legend
 
@@ -51,3 +52,12 @@ PHASE-02:   COMPLETED (100%)
 | 3 | PHASE-02-TASK-003 | Qdrant Vector DB & HuggingFace Embeddings | backend-agent | P0 | ✅ | 0/3 |
 | 4 | PHASE-02-TASK-004 | Qwen 3 LLM Chat SSE Stream | backend-agent | P0 | ✅ | 0/3 |
 | 5 | PHASE-02-TASK-005 | Widget Script Loader & Next.js Chat Widget | frontend-agent | P0 | ✅ | 0/3 |
+
+### PHASE-03: Voice, Analytics & Leads (PRD Phase 2)
+
+| # | Task ID | Title | Agent | Priority | Status | Retries |
+|---|---------|-------|-------|----------|--------|---------|
+| 1 | PHASE-03-TASK-001 | Deepgram STT & Kokoro TTS Audio Pipelines | backend-agent | P0 | ✅ | 0/3 |
+| 2 | PHASE-03-TASK-002 | Mongoose Analytics logs & Leads capturing | backend-agent | P0 | ✅ | 0/3 |
+| 3 | PHASE-03-TASK-003 | Frontend Dashboard metrics cards & leads grid | frontend-agent | P0 | ✅ | 0/3 |
+| 4 | PHASE-03-TASK-004 | Widget intake lead forms & media recording | frontend-agent | P0 | ✅ | 0/3 |

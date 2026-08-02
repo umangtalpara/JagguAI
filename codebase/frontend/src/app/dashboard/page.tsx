@@ -12,6 +12,26 @@ interface ApiKeyResponse {
   createdAt: string;
 }
 
+interface AnalyticsResponse {
+  totalChats: number;
+  totalVisitors: number;
+  avgResponseTimeMs: number;
+  leads: {
+    id: string;
+    email: string;
+    name: string;
+    visitorId: string;
+    createdAt: string;
+  }[];
+  failedAnswers: {
+    id: string;
+    visitorId: string;
+    queryText: string;
+    responseTimeMs: number;
+    createdAt: string;
+  }[];
+}
+
 export default function DashboardOverview() {
   const { currentWorkspace } = useAuthStore();
   const [keys, setKeys] = useState<ApiKeyResponse[]>([]);
@@ -19,6 +39,7 @@ export default function DashboardOverview() {
   const [generatedKey, setGeneratedKey] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [analytics, setAnalytics] = useState<AnalyticsResponse | null>(null);
 
   const fetchKeys = async () => {
     if (!currentWorkspace) {
@@ -32,8 +53,21 @@ export default function DashboardOverview() {
     }
   };
 
+  const fetchAnalytics = async () => {
+    if (!currentWorkspace) {
+      return;
+    }
+    try {
+      const res = await apiRequest<AnalyticsResponse>(`/workspaces/${currentWorkspace.id}/analytics`);
+      setAnalytics(res);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   useEffect(() => {
     fetchKeys();
+    fetchAnalytics();
   }, [currentWorkspace]);
 
   const handleGenerateKey = async (e: React.FormEvent) => {
@@ -68,12 +102,38 @@ export default function DashboardOverview() {
 
   return (
     <div className="space-y-8">
+      {/* Welcome Banner */}
       <div className="glass glass-glow p-8 rounded-2xl border border-white/10 relative overflow-hidden">
         <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full blur-2xl pointer-events-none" />
         <h2 className="text-2xl font-bold text-white mb-2">Welcome to {currentWorkspace?.name || 'your workspace'}!</h2>
         <p className="text-sm text-muted-foreground">
           Deploy customer-facing AI support agents in minutes. Connect your knowledge base and drop the widget code into your website.
         </p>
+      </div>
+
+      {/* Metrics Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="glass p-6 rounded-2xl border border-white/5 relative overflow-hidden">
+          <div className="absolute -top-10 -right-10 w-24 h-24 bg-primary/5 rounded-full blur-2xl" />
+          <span className="text-xs font-medium text-slate-400 block mb-1">Total Chats</span>
+          <span className="text-3xl font-bold text-white tracking-tight">
+            {analytics?.totalChats ?? 0}
+          </span>
+        </div>
+        <div className="glass p-6 rounded-2xl border border-white/5 relative overflow-hidden">
+          <div className="absolute -top-10 -right-10 w-24 h-24 bg-cyan-500/5 rounded-full blur-2xl" />
+          <span className="text-xs font-medium text-slate-400 block mb-1">Total Visitors</span>
+          <span className="text-3xl font-bold text-cyan-400 tracking-tight">
+            {analytics?.totalVisitors ?? 0}
+          </span>
+        </div>
+        <div className="glass p-6 rounded-2xl border border-white/5 relative overflow-hidden">
+          <div className="absolute -top-10 -right-10 w-24 h-24 bg-violet-500/5 rounded-full blur-2xl" />
+          <span className="text-xs font-medium text-slate-400 block mb-1">Avg Response Time</span>
+          <span className="text-3xl font-bold text-violet-400 tracking-tight">
+            {analytics?.avgResponseTimeMs ? `${(analytics.avgResponseTimeMs / 1000).toFixed(1)}s` : '0s'}
+          </span>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -163,6 +223,55 @@ export default function DashboardOverview() {
               <li>Make sure you use the key generated for this workspace.</li>
               <li>Customize colors and assistant greetings inside the "Widget Settings" tab.</li>
             </ul>
+          </div>
+        </div>
+      </div>
+
+      {/* Captured Leads & Failed Answers List */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        {/* Leads Table */}
+        <div className="glass p-6 rounded-2xl border border-white/5 space-y-4">
+          <h3 className="text-lg font-semibold text-white">Captured Contact Leads</h3>
+          <p className="text-xs text-slate-400">
+            Contacts captured through the chatbot widget.
+          </p>
+          <div className="max-h-60 overflow-y-auto space-y-2">
+            {!analytics?.leads || analytics.leads.length === 0 ? (
+              <p className="text-xs text-slate-500 italic p-4 text-center">No leads captured yet.</p>
+            ) : (
+              analytics.leads.map((l) => (
+                <div key={l.id} className="p-3 bg-slate-950/40 border border-white/5 rounded-xl flex justify-between items-center text-xs">
+                  <div>
+                    <span className="font-semibold text-white block">{l.name || 'Anonymous'}</span>
+                    <span className="text-[10px] text-slate-400">{l.email}</span>
+                  </div>
+                  <span className="text-[10px] text-slate-500">{new Date(l.createdAt).toLocaleDateString()}</span>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+
+        {/* Failed Answers Table */}
+        <div className="glass p-6 rounded-2xl border border-white/5 space-y-4">
+          <h3 className="text-lg font-semibold text-white">Unanswered Queries (Gap Analysis)</h3>
+          <p className="text-xs text-slate-400">
+            Visitor questions where the AI found insufficient context.
+          </p>
+          <div className="max-h-60 overflow-y-auto space-y-2">
+            {!analytics?.failedAnswers || analytics.failedAnswers.length === 0 ? (
+              <p className="text-xs text-slate-500 italic p-4 text-center">No failed answers flagged.</p>
+            ) : (
+              analytics.failedAnswers.map((f) => (
+                <div key={f.id} className="p-3 bg-slate-950/40 border border-white/5 rounded-xl space-y-1 text-xs">
+                  <div className="flex justify-between items-center">
+                    <span className="text-[10px] text-red-400 font-semibold">Flagged Gap</span>
+                    <span className="text-[10px] text-slate-500">{new Date(f.createdAt).toLocaleDateString()}</span>
+                  </div>
+                  <p className="text-white text-xs italic">"{f.queryText}"</p>
+                </div>
+              ))
+            )}
           </div>
         </div>
       </div>

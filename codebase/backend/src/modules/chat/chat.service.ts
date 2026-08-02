@@ -5,6 +5,7 @@ import { QdrantService } from '../qdrant/qdrant.service';
 import { OpenaiLlmService, ChatMessage } from '../openai-llm/openai-llm.service';
 import { Conversation } from './entities/conversation.entity';
 import { MessageSender } from './entities/message.entity';
+import { AnalyticsService } from '../analytics/analytics.service';
 
 @Injectable()
 export class ChatService {
@@ -13,6 +14,7 @@ export class ChatService {
     private readonly embeddingsService: EmbeddingsService,
     private readonly qdrantService: QdrantService,
     private readonly openaiLlmService: OpenaiLlmService,
+    private readonly analyticsService: AnalyticsService,
   ) {}
 
   async getOrCreateConversation(workspaceId: string, visitorId: string): Promise<Conversation> {
@@ -58,6 +60,8 @@ ${contextText}
       });
     }
 
+    const startTime = Date.now();
+
     chatMessages.push({ role: 'user', content });
 
     let fullReply = '';
@@ -67,11 +71,25 @@ ${contextText}
       yield chunk;
     }
 
+    const responseTimeMs = Date.now() - startTime;
+    const isFailedAnswer = fullReply.toLowerCase().includes('do not have') ||
+                           fullReply.toLowerCase().includes("don't have") ||
+                           fullReply.toLowerCase().includes("don't know") ||
+                           fullReply.toLowerCase().includes('escalate');
+
     await this.chatRepository.insertMessage({
       conversationId: convoId,
       sender: MessageSender.ASSISTANT,
       content: fullReply,
     });
+
+    await this.analyticsService.logMetric(
+      workspaceId,
+      visitorId,
+      content,
+      responseTimeMs,
+      isFailedAnswer,
+    );
   }
 
   async getMessages(workspaceId: string, visitorId: string): Promise<unknown[]> {
