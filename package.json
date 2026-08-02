@@ -1,0 +1,11 @@
+{
+  "name": "saas-decoupled-project",
+  "private": true,
+  "scripts": {
+    "dev:backend": "cd codebase/backend && npm run start:dev",
+    "dev:frontend": "cd codebase/frontend && npm run dev",
+    "build:backend": "cd codebase/backend && npm run build",
+    "build:frontend": "cd codebase/frontend && npm run build",
+    "validate": "node .ai/scripts/validate-project.js"
+  }
+}
