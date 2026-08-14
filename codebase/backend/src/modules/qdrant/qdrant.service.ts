@@ -1,5 +1,6 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { EmbeddingsService } from '../embeddings/embeddings.service';
 
 export interface QdrantPayload {
   workspaceId: string;
@@ -19,9 +20,11 @@ export interface QdrantSearchResult {
 export class QdrantService implements OnModuleInit {
   private readonly qdrantUrl?: string;
   private readonly apiKey?: string;
-  private readonly collectionName = 'knowledge_chunks';
 
-  constructor(private readonly configService: ConfigService) {
+  constructor(
+    private readonly configService: ConfigService,
+    private readonly embeddingsService: EmbeddingsService,
+  ) {
     this.qdrantUrl = this.configService.get<string>('QDRANT_URL');
     this.apiKey = this.configService.get<string>('QDRANT_API_KEY');
   }
@@ -32,13 +35,17 @@ export class QdrantService implements OnModuleInit {
       return;
     }
 
+    const collectionName = this.getActiveCollectionName();
+    const dimensions = this.embeddingsService.getDimensions();
+
     try {
-      const response = await fetch(`${this.qdrantUrl}/collections/${this.collectionName}`, {
+      const response = await fetch(`${this.qdrantUrl}/collections/${collectionName}`, {
         headers: this.getHeaders(),
       });
 
       if (response.status === 404) {
-        const createRes = await fetch(`${this.qdrantUrl}/collections/${this.collectionName}`, {
+        console.log(`Creating dynamic Qdrant collection: ${collectionName} with dimensions: ${dimensions}`);
+        const createRes = await fetch(`${this.qdrantUrl}/collections/${collectionName}`, {
           method: 'PUT',
           headers: {
             ...this.getHeaders(),
@@ -46,7 +53,7 @@ export class QdrantService implements OnModuleInit {
           },
           body: JSON.stringify({
             vectors: {
-              size: 384,
+              size: dimensions,
               distance: 'Cosine',
             },
           }),
@@ -55,11 +62,24 @@ export class QdrantService implements OnModuleInit {
         if (!createRes.ok) {
           throw new Error(`Failed to create Qdrant collection: ${createRes.statusText}`);
         }
+      } else if (response.ok) {
+        // Validate vector size of existing collection to prevent configuration mismatch
+        const body = await response.json() as any;
+        const configSize = body.result?.config?.params?.vectors?.size;
+        if (configSize !== undefined && configSize !== dimensions) {
+          throw new Error(`Vector dimension mismatch! Active provider is configured with ${dimensions} dimensions, but Qdrant collection ${collectionName} has size ${configSize}. Please check your environment configuration or migrate to a new collection version.`);
+        }
+        console.log(`Qdrant collection ${collectionName} verified with dimensions ${dimensions}`);
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Unknown error';
       console.error(`Failed to initialize Qdrant: ${msg}`);
+      throw err;
     }
+  }
+
+  private getActiveCollectionName(): string {
+    return this.embeddingsService.getCollectionName();
   }
 
   private getHeaders(): Record<string, string> {
@@ -68,6 +88,36 @@ export class QdrantService implements OnModuleInit {
       headers['api-key'] = this.apiKey;
     }
     return headers;
+  }
+
+  async createCollection(collectionName: string, dimensions: number): Promise<void> {
+    if (!this.qdrantUrl) {
+      return;
+    }
+    const response = await fetch(`${this.qdrantUrl}/collections/${collectionName}`, {
+      headers: this.getHeaders(),
+    });
+
+    if (response.status === 404) {
+      console.log(`Creating collection ${collectionName} with size ${dimensions}`);
+      const createRes = await fetch(`${this.qdrantUrl}/collections/${collectionName}`, {
+        method: 'PUT',
+        headers: {
+          ...this.getHeaders(),
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          vectors: {
+            size: dimensions,
+            distance: 'Cosine',
+          },
+        }),
+      });
+
+      if (!createRes.ok) {
+        throw new Error(`Failed to create Qdrant collection ${collectionName}: ${createRes.statusText}`);
+      }
+    }
   }
 
   async indexChunk(
@@ -80,7 +130,8 @@ export class QdrantService implements OnModuleInit {
       return;
     }
 
-    const response = await fetch(`${this.qdrantUrl}/collections/${this.collectionName}/points?wait=true`, {
+    const collectionName = this.getActiveCollectionName();
+    const response = await fetch(`${this.qdrantUrl}/collections/${collectionName}/points?wait=true`, {
       method: 'PUT',
       headers: {
         ...this.getHeaders(),
@@ -98,7 +149,7 @@ export class QdrantService implements OnModuleInit {
     });
 
     if (!response.ok) {
-      throw new Error(`Failed to index chunk in Qdrant: ${response.statusText}`);
+      throw new Error(`Failed to index chunk in Qdrant collection ${collectionName}: ${response.statusText}`);
     }
   }
 
@@ -107,7 +158,8 @@ export class QdrantService implements OnModuleInit {
       return;
     }
 
-    const response = await fetch(`${this.qdrantUrl}/collections/${this.collectionName}/points/delete`, {
+    const collectionName = this.getActiveCollectionName();
+    const response = await fetch(`${this.qdrantUrl}/collections/${collectionName}/points/delete`, {
       method: 'POST',
       headers: {
         ...this.getHeaders(),
@@ -126,7 +178,7 @@ export class QdrantService implements OnModuleInit {
     });
 
     if (!response.ok) {
-      throw new Error(`Failed to delete file points in Qdrant: ${response.statusText}`);
+      throw new Error(`Failed to delete file points in Qdrant collection ${collectionName}: ${response.statusText}`);
     }
   }
 
@@ -139,7 +191,8 @@ export class QdrantService implements OnModuleInit {
       return [];
     }
 
-    const response = await fetch(`${this.qdrantUrl}/collections/${this.collectionName}/points/search`, {
+    const collectionName = this.getActiveCollectionName();
+    const response = await fetch(`${this.qdrantUrl}/collections/${collectionName}/points/search`, {
       method: 'POST',
       headers: {
         ...this.getHeaders(),
@@ -161,7 +214,7 @@ export class QdrantService implements OnModuleInit {
     });
 
     if (!response.ok) {
-      throw new Error(`Failed to search Qdrant: ${response.statusText}`);
+      throw new Error(`Failed to search Qdrant collection ${collectionName}: ${response.statusText}`);
     }
 
     const json = await response.json() as { result?: QdrantSearchResult[] };

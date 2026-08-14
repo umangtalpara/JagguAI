@@ -1,45 +1,49 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { EmbeddingProvider } from './embedding.interface';
+import { BgeEmbeddingProvider } from './providers/bge.provider';
+import { JinaEmbeddingProvider } from './providers/jina.provider';
 
 @Injectable()
 export class EmbeddingsService {
-  private readonly hfApiKey?: string;
-  private readonly endpoint = 'https://api-inference.huggingface.co/pipeline/feature-extraction/BAAI/bge-small-en-v1.5';
+  private readonly provider: EmbeddingProvider;
 
   constructor(private readonly configService: ConfigService) {
-    this.hfApiKey = this.configService.get<string>('HF_API_KEY');
+    const providerName = this.configService.get<string>('EMBEDDING_PROVIDER') || 'bge';
+    if (providerName.toLowerCase() === 'jina') {
+      this.provider = new JinaEmbeddingProvider(this.configService);
+    } else {
+      this.provider = new BgeEmbeddingProvider(this.configService);
+    }
   }
 
   async generateEmbedding(text: string): Promise<number[]> {
-    if (!this.hfApiKey) {
-      return Array.from({ length: 384 }, () => Math.random());
-    }
+    return this.provider.embedQuery(text);
+  }
 
-    try {
-      const response = await fetch(this.endpoint, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${this.hfApiKey}`,
-        },
-        body: JSON.stringify({ inputs: [text] }),
-      });
+  async generateEmbeddings(texts: string[]): Promise<number[][]> {
+    return this.provider.embedDocuments(texts);
+  }
 
-      if (!response.ok) {
-        throw new Error(`HuggingFace API returned ${response.status}: ${response.statusText}`);
-      }
+  getDimensions(): number {
+    return this.provider.getDimensions();
+  }
 
-      const result = await response.json();
-      if (Array.isArray(result) && Array.isArray(result[0])) {
-        return result[0] as number[];
-      } else if (Array.isArray(result)) {
-        return result as number[];
-      }
-      throw new Error('Unexpected HuggingFace API response structure');
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Unknown error';
-      console.error(`Failed to generate HuggingFace embedding: ${msg}. Falling back to mock vector.`);
-      return Array.from({ length: 384 }, () => Math.random());
-    }
+  getProviderName(): string {
+    return this.provider.getProviderName();
+  }
+
+  getModelName(): string {
+    return this.provider.getModelName();
+  }
+
+  getCollectionName(): string {
+    const provider = this.getProviderName();
+    const version = this.configService.get<string>('EMBEDDING_VERSION') || 'v1';
+    return `knowledge_chunks_${provider}_${version}`;
+  }
+
+  async healthCheck(): Promise<{ status: 'ok' | 'error'; message?: string }> {
+    return this.provider.healthCheck();
   }
 }

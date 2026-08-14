@@ -123,4 +123,13 @@ export class KnowledgeController {
   ): Promise<KnowledgeFile> {
     return this.knowledgeService.updateDocument(req.user.id, workspaceId, id, dto);
   }
+
+  @Post('migrate')
+  @ApiOperation({ summary: 'Migrate original MongoDB chunks to the active embeddings provider collection' })
+  async migrate(
+    @Request() req: RequestWithUser,
+    @Param('workspaceId') workspaceId: string,
+  ): Promise<{ success: boolean; migratedCount: number; activeCollection: string }> {
+    return this.knowledgeService.migrateWorkspace(req.user.id, workspaceId);
+  }
 }

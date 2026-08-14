@@ -57,4 +57,8 @@ export class KnowledgeRepository {
     const result = await this.chunkModel.deleteMany({ workspaceId }).exec();
     return result.deletedCount > 0;
   }
+
+  async getChunksByWorkspace(workspaceId: string): Promise<KnowledgeChunkDocument[]> {
+    return this.chunkModel.find({ workspaceId }).exec();
+  }
 }

@@ -221,4 +221,55 @@ export class KnowledgeService {
     const vector = await this.embeddingsService.generateEmbedding(query);
     return this.qdrantService.searchSimilar(workspaceId, vector, limit);
   }
+
+  async migrateWorkspace(
+    userId: string,
+    workspaceId: string,
+  ): Promise<{ success: boolean; migratedCount: number; activeCollection: string }> {
+    await this.workspacesService.getWorkspaceDetails(userId, workspaceId);
+
+    const activeCollection = this.embeddingsService.getCollectionName();
+    const dimensions = this.embeddingsService.getDimensions();
+
+    // Ensure target versioned collection exists in Qdrant
+    await this.qdrantService.createCollection(activeCollection, dimensions);
+
+    const chunks = await this.knowledgeRepository.getChunksByWorkspace(workspaceId);
+    console.log(`Migrating ${chunks.length} chunks to Qdrant collection: ${activeCollection}`);
+
+    const batchSize = 50;
+    for (let i = 0; i < chunks.length; i += batchSize) {
+      const batch = chunks.slice(i, i + batchSize);
+      const batchTexts = batch.map(c => c.content);
+
+      // Batch generate embeddings
+      const vectors = await this.embeddingsService.generateEmbeddings(batchTexts);
+
+      // Re-index into the new Qdrant collection
+      for (let j = 0; j < batch.length; j++) {
+        const chunk = batch[j];
+        const vector = vectors[j];
+        if (chunk && vector) {
+          await this.qdrantService.indexChunk(workspaceId, chunk.qdrantPointId, vector, {
+            workspaceId,
+            fileId: chunk.fileId,
+            content: chunk.content,
+            sourceUrl: chunk.metadata?.sourceUrl,
+            heading: chunk.metadata?.heading,
+          });
+        }
+      }
+    }
+
+    await this.auditLogsService.log(userId, workspaceId, 'EMBEDDINGS_MIGRATED', {
+      activeCollection,
+      count: chunks.length,
+    });
+
+    return {
+      success: true,
+      migratedCount: chunks.length,
+      activeCollection,
+    };
+  }
 }
