@@ -227,7 +227,7 @@ export default function DashboardOverview() {
           </p>
 
           <div className="relative group">
-            <pre className="bg-slate-950 p-4 rounded-xl border border-white/10 overflow-x-auto text-[11px] text-primary-foreground font-mono leading-relaxed select-all">
+            <pre className="bg-slate-950 p-4 rounded-xl border border-white/10 overflow-x-auto text-[11px] text-sky-400 font-mono leading-relaxed select-all">
               {embedCode}
             </pre>
             <button
