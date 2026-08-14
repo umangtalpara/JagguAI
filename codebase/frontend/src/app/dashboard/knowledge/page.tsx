@@ -34,6 +34,71 @@ export default function KnowledgeBase() {
 
   const [message, setMessage] = useState({ text: '', type: '' });
 
+  // Search & Edit states
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [editingFaq, setEditingFaq] = useState<KnowledgeFile | null>(null);
+  const [editQuestion, setEditQuestion] = useState('');
+  const [editAnswer, setEditAnswer] = useState('');
+  const [savingEdit, setSavingEdit] = useState(false);
+
+  const handleSearch = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!currentWorkspace || !searchQuery.trim()) {
+      return;
+    }
+    setSearching(true);
+    setSearchResults([]);
+    try {
+      const res = await apiRequest<any[]>(`/workspaces/${currentWorkspace.id}/knowledge/search?q=${encodeURIComponent(searchQuery.trim())}`);
+      setSearchResults(res);
+    } catch (err: any) {
+      showMsg(err.message || 'Search failed', 'error');
+    } finally {
+      setSearching(false);
+    }
+  };
+
+  const handleReindex = async (id: string) => {
+    if (!currentWorkspace) {
+      return;
+    }
+    try {
+      showMsg('Re-indexing job queued...', 'success');
+      await apiRequest(`/workspaces/${currentWorkspace.id}/knowledge/${id}/reindex`, {
+        method: 'POST',
+      });
+      fetchFiles();
+    } catch (err: any) {
+      showMsg(err.message || 'Re-index failed', 'error');
+    }
+  };
+
+  const handleEditFaqSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!currentWorkspace || !editingFaq) {
+      return;
+    }
+    setSavingEdit(true);
+    try {
+      await apiRequest(`/workspaces/${currentWorkspace.id}/knowledge/${editingFaq.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          question: editQuestion,
+          answer: editAnswer,
+        }),
+      });
+      showMsg('FAQ updated successfully.', 'success');
+      setEditingFaq(null);
+      fetchFiles();
+    } catch (err: any) {
+      showMsg(err.message || 'Update failed', 'error');
+    } finally {
+      setSavingEdit(false);
+    }
+  };
+
   const fetchFiles = async () => {
     if (!currentWorkspace) {
       return;
@@ -287,8 +352,54 @@ export default function KnowledgeBase() {
           )}
         </div>
 
-        <div className="glass p-6 rounded-2xl border border-white/5 space-y-4 lg:col-span-2">
-          <h3 className="text-lg font-semibold text-white">Indexed Documents & Sources</h3>
+        <div className="glass p-6 rounded-2xl border border-white/5 space-y-6 lg:col-span-2 relative">
+          <div className="flex justify-between items-center">
+            <h3 className="text-lg font-semibold text-white">Indexed Documents & Sources</h3>
+          </div>
+
+          {/* Similarity Search Testing */}
+          <form onSubmit={handleSearch} className="flex gap-2">
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Test similarity search query..."
+              className="flex-1 px-3 py-2 bg-slate-950/40 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-primary text-xs"
+            />
+            <button
+              type="submit"
+              disabled={searching}
+              className="px-4 py-2 bg-secondary border border-white/10 text-white rounded-xl text-xs hover:bg-white/5"
+            >
+              {searching ? 'Searching...' : 'Search'}
+            </button>
+          </form>
+
+          {searchResults.length > 0 && (
+            <div className="p-4 bg-slate-950/60 border border-white/5 rounded-xl space-y-2">
+              <div className="flex justify-between items-center">
+                <span className="text-xs font-semibold text-primary">Semantic Search Matches:</span>
+                <button
+                  type="button"
+                  onClick={() => setSearchResults([])}
+                  className="text-[10px] text-muted-foreground hover:text-white"
+                >
+                  Clear Results
+                </button>
+              </div>
+              <div className="space-y-2 max-h-48 overflow-y-auto">
+                {searchResults.map((r, idx) => (
+                  <div key={idx} className="p-2.5 bg-slate-900/40 border border-white/5 rounded-lg space-y-1">
+                    <div className="flex justify-between items-center text-[9px] text-slate-400">
+                      <span>Score: {r.score?.toFixed(4)}</span>
+                      <span className="truncate max-w-40">{r.payload?.sourceUrl || 'Manual Input'}</span>
+                    </div>
+                    <p className="text-[11px] text-slate-200 leading-relaxed italic">"{r.payload?.content}"</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           <div className="space-y-3 max-h-[500px] overflow-y-auto pr-2">
             {files.length === 0 ? (
@@ -308,7 +419,7 @@ export default function KnowledgeBase() {
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2">
                     <span className={`text-[9px] px-2 py-0.5 rounded-full font-semibold ${
                       file.status === 'completed'
                         ? 'bg-green-500/10 text-green-400'
@@ -320,6 +431,36 @@ export default function KnowledgeBase() {
                     }`}>
                       {file.status}
                     </span>
+
+                    {/* Edit FAQ Button */}
+                    {file.type === 'faq' && (
+                      <button
+                        onClick={() => {
+                          setEditingFaq(file);
+                          setEditQuestion(file.name.replace(/^FAQ:\s+/, '').replace(/\.\.\.$/, ''));
+                          setEditAnswer('');
+                        }}
+                        className="p-1.5 hover:bg-white/5 border border-white/5 rounded-lg text-muted-foreground hover:text-white transition-colors"
+                        title="Edit FAQ"
+                      >
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-2.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                        </svg>
+                      </button>
+                    )}
+
+                    {/* Re-index Button */}
+                    {file.type !== 'faq' && (
+                      <button
+                        onClick={() => handleReindex(file.id)}
+                        className="p-1.5 hover:bg-white/5 border border-white/5 rounded-lg text-muted-foreground hover:text-white transition-colors"
+                        title="Re-index Document"
+                      >
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 7.89M9 11l3-3 3 3m-3-3v12" />
+                        </svg>
+                      </button>
+                    )}
 
                     <button
                       onClick={() => handleDelete(file.id)}
@@ -335,6 +476,63 @@ export default function KnowledgeBase() {
               ))
             )}
           </div>
+
+          {/* Edit FAQ Dialog Modal Overlay */}
+          {editingFaq && (
+            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">
+              <div className="bg-slate-900 border border-white/10 rounded-2xl p-6 w-full max-w-md space-y-4">
+                <div className="flex justify-between items-center">
+                  <h4 className="text-sm font-bold text-white">Edit FAQ Content</h4>
+                  <button
+                    type="button"
+                    onClick={() => setEditingFaq(null)}
+                    className="text-slate-400 hover:text-white text-lg font-bold"
+                  >
+                    ×
+                  </button>
+                </div>
+                <form onSubmit={handleEditFaqSubmit} className="space-y-3">
+                  <div className="space-y-1">
+                    <label className="text-[10px] text-slate-400 block font-medium">Question</label>
+                    <input
+                      type="text"
+                      required
+                      value={editQuestion}
+                      onChange={(e) => setEditQuestion(e.target.value)}
+                      className="w-full px-3 py-2 bg-slate-950 border border-white/10 rounded-xl text-white text-xs focus:outline-none focus:border-primary"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] text-slate-400 block font-medium">Answer</label>
+                    <textarea
+                      required
+                      rows={4}
+                      value={editAnswer}
+                      onChange={(e) => setEditAnswer(e.target.value)}
+                      placeholder="Enter new answer..."
+                      className="w-full px-3 py-2 bg-slate-950 border border-white/10 rounded-xl text-white text-xs focus:outline-none focus:border-primary resize-none"
+                    />
+                  </div>
+                  <div className="flex gap-2 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setEditingFaq(null)}
+                      className="flex-1 py-2 border border-white/10 rounded-xl text-xs text-white hover:bg-white/5"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={savingEdit}
+                      className="flex-1 py-2 bg-primary text-primary-foreground font-semibold rounded-xl hover:opacity-90 disabled:opacity-50 text-xs"
+                    >
+                      {savingEdit ? 'Saving...' : 'Save Changes'}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

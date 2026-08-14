@@ -7,6 +7,7 @@ import { VoiceSession, VoiceSessionSchema } from './entities/voice-session.entit
 import { ChatModule } from '../chat/chat.module';
 import { DeepgramService } from './deepgram.service';
 import { KokoroService } from './kokoro.service';
+import { DeepgramTtsService } from './deepgram-tts.service';
 
 @Module({
   imports: [
@@ -14,7 +15,7 @@ import { KokoroService } from './kokoro.service';
     ChatModule,
   ],
   controllers: [VoiceController],
-  providers: [VoiceService, VoiceRepository, DeepgramService, KokoroService],
+  providers: [VoiceService, VoiceRepository, DeepgramService, KokoroService, DeepgramTtsService],
   exports: [VoiceService],
 })
 export class VoiceModule {}

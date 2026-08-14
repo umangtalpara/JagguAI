@@ -24,6 +24,10 @@ export class ChatRepository {
     return this.conversationModel.findById(id).exec();
   }
 
+  async getConversationsByWorkspace(workspaceId: string): Promise<ConversationDocument[]> {
+    return this.conversationModel.find({ workspaceId }).sort({ createdAt: -1 }).exec();
+  }
+
   async insertMessage(data: Partial<Message>): Promise<MessageDocument> {
     const msg = new this.messageModel(data);
     return msg.save();

@@ -4,7 +4,13 @@ import { ChatService } from './chat.service';
 import { SendMessageDto } from './dto/send-message.dto';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 
+import { UseGuards } from '@nestjs/common';
+import { RateLimitGuard } from '../../common/guards/rate-limit.guard';
+
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+
 @ApiTags('chat')
+@UseGuards(RateLimitGuard)
 @Controller('chat')
 export class ChatController {
   constructor(private readonly chatService: ChatService) {}
@@ -47,5 +53,23 @@ export class ChatController {
         isDone = true;
       };
     });
+  }
+
+  @Get('workspaces/:workspaceId/conversations')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'List all chat conversations in workspace' })
+  async listConvos(
+    @Param('workspaceId') workspaceId: string,
+  ): Promise<any[]> {
+    return this.chatService.listConversations(workspaceId);
+  }
+
+  @Get('conversations/:conversationId/messages')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Get all messages of a conversation' })
+  async getConvoMessages(
+    @Param('conversationId') conversationId: string,
+  ): Promise<any[]> {
+    return this.chatService.getMessagesByConversationId(conversationId);
   }
 }

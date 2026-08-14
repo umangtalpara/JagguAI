@@ -5,8 +5,14 @@ import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { UserResponseDto } from '../users/dto/user-response.dto';
+import { ForgotPasswordDto } from './dto/forgot-password.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
+
+import { UseGuards } from '@nestjs/common';
+import { RateLimitGuard } from '../../common/guards/rate-limit.guard';
 
 @ApiTags('auth')
+@UseGuards(RateLimitGuard)
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
@@ -100,5 +106,21 @@ export class AuthController {
     response.clearCookie('access_token');
     response.clearCookie('refresh_token');
     return { success: true };
+  }
+
+  @Post('forgot-password')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Request password reset token link' })
+  async forgotPassword(@Body() dto: ForgotPasswordDto): Promise<{ success: boolean; message: string }> {
+    await this.authService.forgotPassword(dto.email);
+    return { success: true, message: 'Password reset link sent to your email' };
+  }
+
+  @Post('reset-password')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Reset user password using token' })
+  async resetPassword(@Body() dto: ResetPasswordDto): Promise<{ success: boolean; message: string }> {
+    await this.authService.resetPassword(dto.token, dto.password);
+    return { success: true, message: 'Password has been reset successfully' };
   }
 }

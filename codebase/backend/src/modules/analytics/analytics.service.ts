@@ -45,6 +45,8 @@ export class AnalyticsService {
     totalChats: number;
     totalVisitors: number;
     avgResponseTimeMs: number;
+    voiceSessionsCount: number;
+    popularQuestions: { queryText: string; count: number }[];
     leads: unknown[];
     failedAnswers: unknown[];
   }> {
@@ -53,16 +55,32 @@ export class AnalyticsService {
     const metrics = await this.analyticsRepository.getMetrics(workspaceId);
     const leads = await this.analyticsRepository.getLeads(workspaceId);
     const failedAnswers = await this.analyticsRepository.getFailedAnswers(workspaceId);
+    const voiceSessionsCount = await this.analyticsRepository.getVoiceSessionsCount(workspaceId);
 
     const visitors = new Set(metrics.map(m => m.visitorId));
 
     const totalTime = metrics.reduce((sum, m) => sum + m.responseTimeMs, 0);
     const avgResponseTimeMs = metrics.length > 0 ? Math.round(totalTime / metrics.length) : 0;
 
+    // Aggregate popular questions (top 5)
+    const questionFreq = new Map<string, number>();
+    for (const m of metrics) {
+      if (m.queryText) {
+        const q = m.queryText.trim();
+        questionFreq.set(q, (questionFreq.get(q) || 0) + 1);
+      }
+    }
+    const popularQuestions = Array.from(questionFreq.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([queryText, count]) => ({ queryText, count }));
+
     return {
       totalChats: metrics.length,
       totalVisitors: visitors.size,
       avgResponseTimeMs,
+      voiceSessionsCount,
+      popularQuestions,
       leads: leads.map(l => {
         const lId = (l as unknown as Record<string, unknown>)['_id'];
         const lCreatedAt = (l as unknown as Record<string, unknown>)['createdAt'];

@@ -67,4 +67,37 @@ export class AuthService {
       throw new UnauthorizedException('Invalid refresh token');
     }
   }
+
+  private readonly resetTokens = new Map<string, string>();
+
+  async forgotPassword(email: string): Promise<void> {
+    const user = await this.usersService.getByEmail(email);
+    if (!user) {
+      // Return success anyway to avoid user enumeration
+      return;
+    }
+
+    const { v4: uuidv4 } = require('uuid');
+    const token = uuidv4();
+    this.resetTokens.set(token, email);
+
+    console.log(`[MOCK EMAIL] Password reset token for ${email}: ${token}`);
+    console.log(`[MOCK EMAIL] Reset link: http://localhost:3000/auth/reset-password?token=${token}`);
+  }
+
+  async resetPassword(token: string, newPassword: string): Promise<void> {
+    const email = this.resetTokens.get(token);
+    if (!email) {
+      throw new UnauthorizedException('Invalid or expired password reset token');
+    }
+
+    const user = await this.usersService.getByEmail(email);
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+
+    const userId = String((user as any)._id || '');
+    await this.usersService.updateProfile(userId, { password: newPassword });
+    this.resetTokens.delete(token);
+  }
 }

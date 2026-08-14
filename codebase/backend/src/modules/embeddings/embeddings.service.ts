@@ -4,7 +4,7 @@ import { ConfigService } from '@nestjs/config';
 @Injectable()
 export class EmbeddingsService {
   private readonly hfApiKey?: string;
-  private readonly endpoint = 'https://api-inference.huggingface.co/pipeline/feature-extraction/BAAI/bge-base-en-v1.5';
+  private readonly endpoint = 'https://api-inference.huggingface.co/pipeline/feature-extraction/BAAI/bge-small-en-v1.5';
 
   constructor(private readonly configService: ConfigService) {
     this.hfApiKey = this.configService.get<string>('HF_API_KEY');
@@ -12,7 +12,7 @@ export class EmbeddingsService {
 
   async generateEmbedding(text: string): Promise<number[]> {
     if (!this.hfApiKey) {
-      return Array.from({ length: 768 }, () => Math.random());
+      return Array.from({ length: 384 }, () => Math.random());
     }
 
     try {
@@ -39,7 +39,7 @@ export class EmbeddingsService {
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Unknown error';
       console.error(`Failed to generate HuggingFace embedding: ${msg}. Falling back to mock vector.`);
-      return Array.from({ length: 768 }, () => Math.random());
+      return Array.from({ length: 384 }, () => Math.random());
     }
   }
 }

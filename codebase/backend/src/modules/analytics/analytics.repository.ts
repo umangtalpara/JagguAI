@@ -4,12 +4,19 @@ import { Model } from 'mongoose';
 import { Analytics, AnalyticsDocument } from './entities/analytics.entity';
 import { Lead, LeadDocument } from './entities/lead.entity';
 
+import { VoiceSession, VoiceSessionDocument } from '../voice/entities/voice-session.entity';
+
 @Injectable()
 export class AnalyticsRepository {
   constructor(
     @InjectModel(Analytics.name) private readonly analyticsModel: Model<AnalyticsDocument>,
     @InjectModel(Lead.name) private readonly leadModel: Model<LeadDocument>,
+    @InjectModel(VoiceSession.name) private readonly voiceSessionModel: Model<VoiceSessionDocument>,
   ) {}
+
+  async getVoiceSessionsCount(workspaceId: string): Promise<number> {
+    return this.voiceSessionModel.countDocuments({ workspaceId }).exec();
+  }
 
   async insertMetric(data: Partial<Analytics>): Promise<AnalyticsDocument> {
     const doc = new this.analyticsModel(data);

@@ -8,6 +8,8 @@ import { StorageService } from '../storage/storage.service';
 import { EmbeddingsService } from '../embeddings/embeddings.service';
 import { QdrantService } from '../qdrant/qdrant.service';
 import { KnowledgeFile, KnowledgeSourceType, KnowledgeProcessingStatus } from './entities/knowledge-file.entity';
+import { AuditLogsService } from '../audit-logs/audit-logs.service';
+
 
 @Injectable()
 export class KnowledgeService {
@@ -17,6 +19,7 @@ export class KnowledgeService {
     private readonly storageService: StorageService,
     private readonly embeddingsService: EmbeddingsService,
     private readonly qdrantService: QdrantService,
+    private readonly auditLogsService: AuditLogsService,
     @InjectQueue('document-processing') private readonly documentQueue: Queue,
   ) {}
 
@@ -48,12 +51,14 @@ export class KnowledgeService {
       url,
     });
 
-    const fileDocId = (fileDoc as unknown as Record<string, unknown>)['_id'];
+    const fileDocId = String((fileDoc as any)._id || '');
 
     await this.documentQueue.add('process', {
-      fileId: String(fileDocId || ''),
+      fileId: fileDocId,
       workspaceId,
     });
+
+    await this.auditLogsService.log(userId, workspaceId, 'DOCUMENT_UPLOADED', { fileId: fileDocId, fileName: file.originalname });
 
     return fileDoc;
   }
@@ -77,7 +82,7 @@ export class KnowledgeService {
       chunkCount: 1,
     });
 
-    const fileDocId = (fileDoc as unknown as Record<string, unknown>)['_id'];
+    const fileDocId = String((fileDoc as any)._id || '');
     const chunkText = `Question: ${question}\nAnswer: ${answer}`;
 
     const vector = await this.embeddingsService.generateEmbedding(chunkText);
@@ -85,17 +90,19 @@ export class KnowledgeService {
 
     await this.qdrantService.indexChunk(workspaceId, pointId, vector, {
       workspaceId,
-      fileId: String(fileDocId || ''),
+      fileId: fileDocId,
       content: chunkText,
     });
 
     await this.knowledgeRepository.insertManyChunks([{
       workspaceId,
-      fileId: String(fileDocId || ''),
+      fileId: fileDocId,
       content: chunkText,
       qdrantPointId: pointId,
       metadata: { pageNumber: 1, heading: 'FAQ' },
     }]);
+
+    await this.auditLogsService.log(userId, workspaceId, 'FAQ_CREATED', { faqId: fileDocId, question });
 
     return fileDoc;
   }
@@ -120,5 +127,98 @@ export class KnowledgeService {
     await this.qdrantService.deleteFilePoints(workspaceId, fileId);
     await this.knowledgeRepository.deleteChunksByFile(fileId);
     await this.knowledgeRepository.deleteFileById(fileId);
+
+    await this.auditLogsService.log(userId, workspaceId, 'DOCUMENT_DELETED', { fileId, fileName: fileDoc.name });
+  }
+
+  async updateDocument(
+    userId: string,
+    workspaceId: string,
+    fileId: string,
+    dto: import('./dto/update-knowledge.dto').UpdateKnowledgeDto,
+  ): Promise<KnowledgeFile> {
+    await this.workspacesService.getWorkspaceDetails(userId, workspaceId);
+
+    const fileDoc = await this.knowledgeRepository.getFileById(fileId);
+    if (!fileDoc) {
+      throw new NotFoundException('Document not found');
+    }
+
+    if (fileDoc.type === KnowledgeSourceType.FAQ && (dto.question || dto.answer)) {
+      // Deleting old vectors & chunks
+      await this.qdrantService.deleteFilePoints(workspaceId, fileId);
+      await this.knowledgeRepository.deleteChunksByFile(fileId);
+
+      // Re-create FAQ chunk/vector
+      const question = dto.question || fileDoc.name.replace(/^FAQ:\s+/, '').replace(/\.\.\.$/, '');
+      const answer = dto.answer || '';
+      
+      const faqName = dto.name || `FAQ: ${question.substring(0, 30)}...`;
+      const chunkText = `Question: ${question}\nAnswer: ${answer}`;
+
+      const vector = await this.embeddingsService.generateEmbedding(chunkText);
+      const pointId = uuidv4();
+
+      await this.qdrantService.indexChunk(workspaceId, pointId, vector, {
+        workspaceId,
+        fileId,
+        content: chunkText,
+      });
+
+      await this.knowledgeRepository.insertManyChunks([{
+        workspaceId,
+        fileId,
+        content: chunkText,
+        qdrantPointId: pointId,
+        metadata: { pageNumber: 1, heading: 'FAQ' },
+      }]);
+
+      await this.knowledgeRepository.updateFileById(fileId, {
+        name: faqName,
+        charCount: question.length + answer.length,
+      });
+    } else if (dto.name) {
+      await this.knowledgeRepository.updateFileById(fileId, { name: dto.name });
+    }
+
+    const updated = await this.knowledgeRepository.getFileById(fileId);
+    if (!updated) {
+      throw new NotFoundException('Document not found');
+    }
+
+    await this.auditLogsService.log(userId, workspaceId, 'DOCUMENT_UPDATED', { fileId, name: updated.name });
+    return updated;
+  }
+
+  async reindexDocument(userId: string, workspaceId: string, fileId: string): Promise<{ success: boolean }> {
+    await this.workspacesService.getWorkspaceDetails(userId, workspaceId);
+
+    const fileDoc = await this.knowledgeRepository.getFileById(fileId);
+    if (!fileDoc) {
+      throw new NotFoundException('Document not found');
+    }
+
+    await this.qdrantService.deleteFilePoints(workspaceId, fileId);
+    await this.knowledgeRepository.deleteChunksByFile(fileId);
+
+    await this.knowledgeRepository.updateFileById(fileId, {
+      status: KnowledgeProcessingStatus.PENDING,
+    });
+
+    await this.documentQueue.add('process', {
+      fileId,
+      workspaceId,
+    });
+
+    await this.auditLogsService.log(userId, workspaceId, 'DOCUMENT_REINDEXED', { fileId, fileName: fileDoc.name });
+
+    return { success: true };
+  }
+
+  async searchSimilarity(userId: string, workspaceId: string, query: string, limit = 5): Promise<any[]> {
+    await this.workspacesService.getWorkspaceDetails(userId, workspaceId);
+
+    const vector = await this.embeddingsService.generateEmbedding(query);
+    return this.qdrantService.searchSimilar(workspaceId, vector, limit);
   }
 }

@@ -21,6 +21,10 @@ export class KnowledgeRepository {
     return this.fileModel.findById(id).exec();
   }
 
+  async getFileByUrl(workspaceId: string, url: string): Promise<KnowledgeFileDocument | null> {
+    return this.fileModel.findOne({ workspaceId, url }).exec();
+  }
+
   async getFilesByWorkspace(workspaceId: string): Promise<KnowledgeFileDocument[]> {
     return this.fileModel.find({ workspaceId }).sort({ createdAt: -1 }).exec();
   }

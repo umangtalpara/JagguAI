@@ -35,7 +35,38 @@ export class CrawlerProcessor extends WorkerHost {
     const origin = parsedUrl.origin;
 
     const visited = new Set<string>();
-    const queue: { url: string; depth: number }[] = [{ url: seedUrl, depth: 0 }];
+    const queue: { url: string; depth: number }[] = [];
+
+    // Sitemap Discovery & Parsing
+    const tryParseSitemap = async (sitemapUrl: string) => {
+      try {
+        const sitemapRes = await fetch(sitemapUrl);
+        if (sitemapRes.ok) {
+          const xmlText = await sitemapRes.text();
+          const matches = [...xmlText.matchAll(/<loc>(https?:\/\/[^<]+)<\/loc>/gi)];
+          for (const match of matches) {
+            if (match[1]) {
+              const u = match[1].trim();
+              try {
+                const uObj = new URL(u);
+                if (uObj.origin === origin && !visited.has(u)) {
+                  queue.push({ url: u, depth: 0 });
+                }
+              } catch {}
+            }
+          }
+        }
+      } catch (e) {
+        console.warn(`Sitemap parsing failed for ${sitemapUrl}:`, e);
+      }
+    };
+
+    if (seedUrl.endsWith('.xml') || seedUrl.includes('sitemap')) {
+      await tryParseSitemap(seedUrl);
+    } else {
+      queue.push({ url: seedUrl, depth: 0 });
+      await tryParseSitemap(`${origin}/sitemap.xml`);
+    }
 
     const disallowedPaths: string[] = [];
     try {
@@ -112,15 +143,30 @@ export class CrawlerProcessor extends WorkerHost {
           .trim();
 
         if (bodyText.length > 100) {
-          const fileDoc = await this.knowledgeRepository.insertFile({
-            workspaceId,
-            name: title,
-            type: KnowledgeSourceType.WEBSITE_CRAWL,
-            status: KnowledgeProcessingStatus.PROCESSING,
-            url,
-          });
-
-          const fileDocId = (fileDoc as unknown as Record<string, unknown>)['_id'];
+          // Check if page already indexed under this workspace (Incremental Ingestion)
+          const existingFile = await this.knowledgeRepository.getFileByUrl(workspaceId, url);
+          let fileDocId = '';
+          
+          if (existingFile) {
+            fileDocId = String(existingFile._id || '');
+            // Delete old vectors and chunks
+            await this.qdrantService.deleteFilePoints(workspaceId, fileDocId);
+            await this.knowledgeRepository.deleteChunksByFile(fileDocId);
+            
+            await this.knowledgeRepository.updateFileById(fileDocId, {
+              status: KnowledgeProcessingStatus.PROCESSING,
+              name: title,
+            });
+          } else {
+            const fileDoc = await this.knowledgeRepository.insertFile({
+              workspaceId,
+              name: title,
+              type: KnowledgeSourceType.WEBSITE_CRAWL,
+              status: KnowledgeProcessingStatus.PROCESSING,
+              url,
+            });
+            fileDocId = String(fileDoc._id || '');
+          }
 
           const chunks: string[] = [];
           const chunkSize = 1000;
@@ -144,14 +190,14 @@ export class CrawlerProcessor extends WorkerHost {
 
             await this.qdrantService.indexChunk(workspaceId, pointId, vector, {
               workspaceId,
-              fileId: String(fileDocId || ''),
+              fileId: fileDocId,
               content: cleanText,
               sourceUrl: url,
             });
 
             chunkDocs.push({
               workspaceId,
-              fileId: String(fileDocId || ''),
+              fileId: fileDocId,
               content: cleanText,
               qdrantPointId: pointId,
               metadata: { pageNumber: 1, heading: title, sourceUrl: url },
@@ -163,7 +209,7 @@ export class CrawlerProcessor extends WorkerHost {
             await this.knowledgeRepository.insertManyChunks(chunkDocs);
           }
 
-          await this.knowledgeRepository.updateFileById(String(fileDocId || ''), {
+          await this.knowledgeRepository.updateFileById(fileDocId, {
             status: KnowledgeProcessingStatus.COMPLETED,
             charCount: bodyText.length,
             chunkCount: chunkDocs.length,

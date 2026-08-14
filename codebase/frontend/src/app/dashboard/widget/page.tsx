@@ -138,6 +138,53 @@ export default function WidgetCustomizer() {
             </div>
           </div>
 
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-semibold text-muted-foreground uppercase mb-2">Logo URL</label>
+              <input
+                type="text"
+                value={settings.logoUrl}
+                onChange={(e) => setSettings({ ...settings, logoUrl: e.target.value })}
+                placeholder="https://example.com/logo.png"
+                className="w-full px-3 py-2 bg-slate-950/40 border border-white/10 rounded-xl text-white text-xs focus:outline-none focus:border-primary"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-muted-foreground uppercase mb-2">Avatar URL</label>
+              <input
+                type="text"
+                value={settings.avatarUrl}
+                onChange={(e) => setSettings({ ...settings, avatarUrl: e.target.value })}
+                placeholder="https://example.com/avatar.png"
+                className="w-full px-3 py-2 bg-slate-950/40 border border-white/10 rounded-xl text-white text-xs focus:outline-none focus:border-primary"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-semibold text-muted-foreground uppercase mb-2">Theme</label>
+              <select
+                value={settings.theme}
+                onChange={(e) => setSettings({ ...settings, theme: e.target.value })}
+                className="w-full bg-slate-950 border border-white/10 text-white rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-primary"
+              >
+                <option value="light">Light</option>
+                <option value="dark">Dark</option>
+              </select>
+            </div>
+            <div className="flex items-center gap-2 pt-6">
+              <input
+                type="checkbox"
+                id="voiceEnabled"
+                checked={settings.voiceEnabled}
+                onChange={(e) => setSettings({ ...settings, voiceEnabled: e.target.checked })}
+                className="w-4 h-4 rounded border-white/10 bg-slate-950 text-primary focus:ring-primary"
+              />
+              <label htmlFor="voiceEnabled" className="text-xs font-semibold text-muted-foreground uppercase cursor-pointer">Voice Enabled</label>
+            </div>
+          </div>
+
           <div>
             <label className="block text-xs font-semibold text-muted-foreground uppercase mb-2">Default Welcome Greeting</label>
             <input
@@ -199,10 +246,18 @@ export default function WidgetCustomizer() {
         <div className="glass p-6 rounded-2xl border border-white/5 flex flex-col items-center justify-center space-y-6 min-h-[500px]">
           <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Live Preview</span>
           
-          <div className="w-[340px] h-[480px] bg-slate-950 rounded-2xl border border-white/10 shadow-2xl flex flex-col overflow-hidden">
+          <div className={`w-[340px] h-[480px] rounded-2xl border shadow-2xl flex flex-col overflow-hidden transition-all duration-300 ${
+            settings.theme === 'light'
+              ? 'bg-white border-slate-200 text-slate-800'
+              : 'bg-slate-950 border-white/10 text-white'
+          }`}>
             <div className="p-4 flex items-center justify-between border-b border-white/5" style={{ backgroundColor: settings.primaryColor }}>
               <div className="flex items-center gap-2">
-                <div className="h-2 w-2 rounded-full bg-green-400 animate-pulse" />
+                {settings.logoUrl ? (
+                  <img src={settings.logoUrl} alt="Logo" className="h-5 w-auto object-contain rounded" />
+                ) : (
+                  <div className="h-2 w-2 rounded-full bg-green-400 animate-pulse" />
+                )}
                 <span className="text-xs font-bold text-white uppercase tracking-wide">AI Assistant</span>
               </div>
               <button type="button" className="text-white hover:opacity-80">
@@ -214,8 +269,16 @@ export default function WidgetCustomizer() {
 
             <div className="flex-1 p-4 overflow-y-auto space-y-4 flex flex-col justify-end">
               <div className="flex gap-2 items-end">
-                <div className="h-6 w-6 rounded-full bg-white/10 flex items-center justify-center text-[10px] text-white">AI</div>
-                <div className="max-w-[75%] p-3 bg-white/5 border border-white/5 text-white rounded-2xl rounded-bl-none text-xs leading-relaxed">
+                {settings.avatarUrl ? (
+                  <img src={settings.avatarUrl} alt="Avatar" className="h-6 w-6 rounded-full object-cover border border-white/10 bg-slate-850" />
+                ) : (
+                  <div className="h-6 w-6 rounded-full bg-white/10 flex items-center justify-center text-[10px] text-white">AI</div>
+                )}
+                <div className={`max-w-[75%] p-3 rounded-2xl rounded-bl-none text-xs leading-relaxed border ${
+                  settings.theme === 'light'
+                    ? 'bg-slate-100 border-slate-200 text-slate-800'
+                    : 'bg-white/5 border-white/5 text-white'
+                }`}>
                   {settings.greeting}
                 </div>
               </div>
@@ -225,7 +288,11 @@ export default function WidgetCustomizer() {
                   <button
                     key={idx}
                     type="button"
-                    className="block w-full text-left px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/5 rounded-xl text-[10px] text-primary truncate"
+                    className={`block w-full text-left px-3 py-1.5 border rounded-xl text-[10px] truncate ${
+                      settings.theme === 'light'
+                        ? 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-700'
+                        : 'bg-white/5 hover:bg-white/10 border-white/5 text-slate-300'
+                    }`}
                   >
                     {q}
                   </button>
@@ -233,17 +300,39 @@ export default function WidgetCustomizer() {
               </div>
             </div>
 
-            <div className="p-3 border-t border-white/5 bg-slate-950 flex gap-2">
+            <div className={`p-3 border-t flex gap-2 ${
+              settings.theme === 'light' ? 'border-slate-200 bg-slate-50' : 'border-white/5 bg-slate-950'
+            }`}>
               <input
                 type="text"
                 disabled
                 placeholder="Ask me anything..."
-                className="flex-1 bg-white/5 border border-white/5 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500"
+                className={`flex-1 rounded-xl px-3 py-2 text-xs focus:outline-none ${
+                  settings.theme === 'light'
+                    ? 'bg-slate-200/50 border border-slate-300 text-slate-800 placeholder-slate-500'
+                    : 'bg-white/5 border border-white/5 text-white placeholder-slate-500'
+                }`}
               />
+              {settings.voiceEnabled && (
+                <button
+                  type="button"
+                  disabled
+                  className={`p-2 rounded-xl flex items-center justify-center border transition-all ${
+                    settings.theme === 'light'
+                      ? 'border-slate-300 bg-slate-100 text-slate-600'
+                      : 'border-white/10 bg-white/5 text-slate-300'
+                  }`}
+                  title="Voice Mode Enabled"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                  </svg>
+                </button>
+              )}
               <button
                 type="button"
                 disabled
-                className="p-2 rounded-xl flex items-center justify-center text-primary-foreground"
+                className="p-2 rounded-xl flex items-center justify-center text-white"
                 style={{ backgroundColor: settings.primaryColor }}
               >
                 <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">

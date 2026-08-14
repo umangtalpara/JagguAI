@@ -1,7 +1,9 @@
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { VoiceRepository } from './voice.repository';
 import { DeepgramService } from './deepgram.service';
 import { KokoroService } from './kokoro.service';
+import { DeepgramTtsService } from './deepgram-tts.service';
 import { ChatService } from '../chat/chat.service';
 import { VoiceSession } from './entities/voice-session.entity';
 
@@ -11,7 +13,9 @@ export class VoiceService {
     private readonly voiceRepository: VoiceRepository,
     private readonly deepgramService: DeepgramService,
     private readonly kokoroService: KokoroService,
+    private readonly deepgramTtsService: DeepgramTtsService,
     private readonly chatService: ChatService,
+    private readonly configService: ConfigService,
   ) {}
 
   async getOrCreateSession(workspaceId: string, visitorId: string): Promise<VoiceSession> {
@@ -42,7 +46,10 @@ export class VoiceService {
       responseText = "I'm sorry, I could not hear anything. Could you please repeat that?";
     }
 
-    const responseAudio = await this.kokoroService.textToSpeech(responseText);
+    const hasDeepgram = !!this.configService.get<string>('DEEPGRAM_API_KEY');
+    const responseAudio = hasDeepgram
+      ? await this.deepgramTtsService.textToSpeech(responseText)
+      : await this.kokoroService.textToSpeech(responseText);
 
     return {
       transcribedText,

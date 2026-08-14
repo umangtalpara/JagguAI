@@ -5,6 +5,7 @@ import { QdrantService } from '../qdrant/qdrant.service';
 import { OpenaiLlmService, ChatMessage } from '../openai-llm/openai-llm.service';
 import { Conversation } from './entities/conversation.entity';
 import { MessageSender } from './entities/message.entity';
+import { detectPromptInjection } from '../../common/utils/prompt-injection.util';
 import { AnalyticsService } from '../analytics/analytics.service';
 
 @Injectable()
@@ -26,6 +27,11 @@ export class ChatService {
   }
 
   async *streamResponse(workspaceId: string, visitorId: string, content: string): AsyncGenerator<string, void, unknown> {
+    if (detectPromptInjection(content)) {
+      yield "Security warning: Potential override or prompt injection attempt detected. Please ask standard customer support questions.";
+      return;
+    }
+
     const convo = await this.getOrCreateConversation(workspaceId, visitorId);
     const convoId = String((convo as unknown as Record<string, unknown>)['_id'] || '');
 
@@ -40,7 +46,22 @@ export class ChatService {
     const vector = await this.embeddingsService.generateEmbedding(content);
     const searchResults = await this.qdrantService.searchSimilar(workspaceId, vector, 4);
 
-    const contextText = searchResults.map(r => r.payload.content).join('\n\n');
+    const uniqueSources: { title: string; url: string }[] = [];
+    const seenUrls = new Set<string>();
+    for (const r of searchResults) {
+      const url = r.payload?.sourceUrl;
+      const title = r.payload?.heading || 'Source Document';
+      if (url && !seenUrls.has(url)) {
+        seenUrls.add(url);
+        uniqueSources.push({ title, url });
+      }
+    }
+
+    if (uniqueSources.length > 0) {
+      yield `[METADATA]:${JSON.stringify({ sources: uniqueSources })}\n`;
+    }
+
+    const contextText = searchResults.map(r => r.payload?.content || '').join('\n\n');
 
     const systemPrompt = `You are a helpful and polite AI Customer Support Assistant.
 Answer visitor questions using only the context provided below. If the answer cannot be found in the context, politely state that you do not have that information and offer to escalate to a human. Do not make up facts or links.
@@ -99,5 +120,13 @@ ${contextText}
     }
     const convoId = String((convo as unknown as Record<string, unknown>)['_id'] || '');
     return this.chatRepository.getMessagesByConversation(convoId);
+  }
+
+  async listConversations(workspaceId: string): Promise<Conversation[]> {
+    return this.chatRepository.getConversationsByWorkspace(workspaceId);
+  }
+
+  async getMessagesByConversationId(conversationId: string): Promise<any[]> {
+    return this.chatRepository.getMessagesByConversation(conversationId);
   }
 }

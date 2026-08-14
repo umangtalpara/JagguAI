@@ -1,8 +1,9 @@
-import { Controller, Get, Post, Delete, Body, Param, UseGuards, Request, UseInterceptors, UploadedFile, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Body, Param, UseGuards, Request, UseInterceptors, UploadedFile, HttpCode, HttpStatus } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiTags, ApiBearerAuth, ApiConsumes, ApiBody, ApiOperation } from '@nestjs/swagger';
 import { KnowledgeService } from './knowledge.service';
 import { CreateFaqDto } from './dto/create-faq.dto';
+import { UpdateKnowledgeDto } from './dto/update-knowledge.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { KnowledgeFile } from './entities/knowledge-file.entity';
 
@@ -88,5 +89,38 @@ export class KnowledgeController {
     @Param('id') id: string,
   ): Promise<void> {
     await this.knowledgeService.deleteDocument(req.user.id, workspaceId, id);
+  }
+
+  @Post(':id/reindex')
+  @ApiOperation({ summary: 'Purge vectors and re-queue document processing' })
+  async reindex(
+    @Request() req: RequestWithUser,
+    @Param('workspaceId') workspaceId: string,
+    @Param('id') id: string,
+  ): Promise<{ success: boolean }> {
+    return this.knowledgeService.reindexDocument(req.user.id, workspaceId, id);
+  }
+
+  @Get('search')
+  @ApiOperation({ summary: 'Perform vector similarity search on knowledge base' })
+  async search(
+    @Request() req: RequestWithUser,
+    @Param('workspaceId') workspaceId: string,
+    @Request() reqObj: any,
+  ): Promise<any[]> {
+    const query = reqObj.query.q as string;
+    const limit = reqObj.query.limit ? parseInt(reqObj.query.limit as string) : 5;
+    return this.knowledgeService.searchSimilarity(req.user.id, workspaceId, query, limit);
+  }
+
+  @Patch(':id')
+  @ApiOperation({ summary: 'Update a knowledge source (FAQ or document details)' })
+  async update(
+    @Request() req: RequestWithUser,
+    @Param('workspaceId') workspaceId: string,
+    @Param('id') id: string,
+    @Body() dto: UpdateKnowledgeDto,
+  ): Promise<KnowledgeFile> {
+    return this.knowledgeService.updateDocument(req.user.id, workspaceId, id, dto);
   }
 }

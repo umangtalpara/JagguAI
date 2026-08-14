@@ -46,7 +46,7 @@ export class QdrantService implements OnModuleInit {
           },
           body: JSON.stringify({
             vectors: {
-              size: 768,
+              size: 384,
               distance: 'Cosine',
             },
           }),

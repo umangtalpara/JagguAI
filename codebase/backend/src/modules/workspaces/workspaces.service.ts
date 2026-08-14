@@ -5,13 +5,18 @@ import { UpdateWorkspaceDto } from './dto/update-workspace.dto';
 import { Workspace } from './entities/workspace.entity';
 import { ApiKey } from './entities/api-key.entity';
 import { generateApiKey, hashApiKey, maskApiKey } from '../../common/utils/encryption.util';
+import { AuditLogsService } from '../audit-logs/audit-logs.service';
+
 
 @Injectable()
 export class WorkspacesService {
-  constructor(private readonly workspacesRepository: WorkspacesRepository) {}
+  constructor(
+    private readonly workspacesRepository: WorkspacesRepository,
+    private readonly auditLogsService: AuditLogsService,
+  ) {}
 
   async createWorkspace(ownerId: string, dto: CreateWorkspaceDto): Promise<Workspace> {
-    return this.workspacesRepository.insert({
+    const ws = await this.workspacesRepository.insert({
       name: dto.name,
       ownerId,
       companyInfo: dto.companyInfo || '',
@@ -21,6 +26,10 @@ export class WorkspacesService {
         theme: dto.branding?.theme || 'light',
       },
     });
+
+    const wsId = String((ws as any)._id || '');
+    await this.auditLogsService.log(ownerId, wsId, 'WORKSPACE_CREATED', { name: ws.name });
+    return ws;
   }
 
   async listWorkspaces(ownerId: string): Promise<Workspace[]> {
@@ -60,12 +69,15 @@ export class WorkspacesService {
     if (!updated) {
       throw new NotFoundException('Workspace not found');
     }
+
+    await this.auditLogsService.log(userId, workspaceId, 'WORKSPACE_UPDATED', { updateFields: Object.keys(updateData) });
     return updated;
   }
 
   async deleteWorkspace(userId: string, workspaceId: string): Promise<void> {
     await this.getWorkspaceDetails(userId, workspaceId);
     await this.workspacesRepository.deleteById(workspaceId);
+    await this.auditLogsService.log(userId, workspaceId, 'WORKSPACE_DELETED');
   }
 
   async generateWorkspaceKey(userId: string, workspaceId: string, name: string): Promise<{ apiKey: string }> {
@@ -75,13 +87,16 @@ export class WorkspacesService {
     const hash = hashApiKey(rawKey);
     const masked = maskApiKey(rawKey);
 
-    await this.workspacesRepository.insertKey({
+    const apiKeyDoc = await this.workspacesRepository.insertKey({
       workspaceId,
       keyHash: hash,
       keyMasked: masked,
       name,
       isActive: true,
     });
+
+    const keyId = String((apiKeyDoc as any)._id || '');
+    await this.auditLogsService.log(userId, workspaceId, 'API_KEY_GENERATED', { keyId, keyName: name });
 
     return { apiKey: rawKey };
   }
@@ -94,6 +109,7 @@ export class WorkspacesService {
   async revokeWorkspaceKey(userId: string, workspaceId: string, keyId: string): Promise<void> {
     await this.getWorkspaceDetails(userId, workspaceId);
     await this.workspacesRepository.deleteKey(keyId);
+    await this.auditLogsService.log(userId, workspaceId, 'API_KEY_REVOKED', { keyId });
   }
 
   async validateKey(rawKey: string): Promise<Workspace | null> {

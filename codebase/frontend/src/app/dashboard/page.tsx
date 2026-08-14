@@ -16,6 +16,8 @@ interface AnalyticsResponse {
   totalChats: number;
   totalVisitors: number;
   avgResponseTimeMs: number;
+  voiceSessionsCount: number;
+  popularQuestions: { queryText: string; count: number }[];
   leads: {
     id: string;
     email: string;
@@ -112,7 +114,7 @@ export default function DashboardOverview() {
       </div>
 
       {/* Metrics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
         <div className="glass p-6 rounded-2xl border border-white/5 relative overflow-hidden">
           <div className="absolute -top-10 -right-10 w-24 h-24 bg-primary/5 rounded-full blur-2xl" />
           <span className="text-xs font-medium text-slate-400 block mb-1">Total Chats</span>
@@ -132,6 +134,13 @@ export default function DashboardOverview() {
           <span className="text-xs font-medium text-slate-400 block mb-1">Avg Response Time</span>
           <span className="text-3xl font-bold text-violet-400 tracking-tight">
             {analytics?.avgResponseTimeMs ? `${(analytics.avgResponseTimeMs / 1000).toFixed(1)}s` : '0s'}
+          </span>
+        </div>
+        <div className="glass p-6 rounded-2xl border border-white/5 relative overflow-hidden">
+          <div className="absolute -top-10 -right-10 w-24 h-24 bg-rose-500/5 rounded-full blur-2xl" />
+          <span className="text-xs font-medium text-slate-400 block mb-1">Voice Sessions</span>
+          <span className="text-3xl font-bold text-rose-400 tracking-tight">
+            {analytics?.voiceSessionsCount ?? 0}
           </span>
         </div>
       </div>
@@ -228,7 +237,7 @@ export default function DashboardOverview() {
       </div>
 
       {/* Captured Leads & Failed Answers List */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Leads Table */}
         <div className="glass p-6 rounded-2xl border border-white/5 space-y-4">
           <h3 className="text-lg font-semibold text-white">Captured Contact Leads</h3>
@@ -269,6 +278,26 @@ export default function DashboardOverview() {
                     <span className="text-[10px] text-slate-500">{new Date(f.createdAt).toLocaleDateString()}</span>
                   </div>
                   <p className="text-white text-xs italic">"{f.queryText}"</p>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+
+        {/* Popular Questions Table */}
+        <div className="glass p-6 rounded-2xl border border-white/5 space-y-4">
+          <h3 className="text-lg font-semibold text-white">Popular User Queries</h3>
+          <p className="text-xs text-slate-400">
+            Most frequently asked visitor questions.
+          </p>
+          <div className="max-h-60 overflow-y-auto space-y-2">
+            {!analytics?.popularQuestions || analytics.popularQuestions.length === 0 ? (
+              <p className="text-xs text-slate-500 italic p-4 text-center">No queries logged yet.</p>
+            ) : (
+              analytics.popularQuestions.map((pq, idx) => (
+                <div key={idx} className="p-3 bg-slate-950/40 border border-white/5 rounded-xl flex justify-between items-center text-xs">
+                  <span className="text-white italic truncate max-w-[200px]" title={pq.queryText}>"{pq.queryText}"</span>
+                  <span className="text-[10px] px-2 py-0.5 rounded bg-primary/20 text-primary font-bold">{pq.count}x</span>
                 </div>
               ))
             )}
