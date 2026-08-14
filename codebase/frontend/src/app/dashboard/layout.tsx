@@ -5,6 +5,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { useAuthStore } from '../../stores/auth-store';
 import { apiRequest } from '../../lib/api';
+import { PageLoader, Spinner } from '../../components/ui/Loader';
 
 interface Workspace {
   id: string;
@@ -22,6 +23,7 @@ export default function DashboardLayout({
   const [showWorkspaceModal, setShowWorkspaceModal] = useState(false);
   const [newWorkspaceName, setNewWorkspaceName] = useState('');
   const [loading, setLoading] = useState(false);
+  const [syncingWorkspaces, setSyncingWorkspaces] = useState(true);
 
   useEffect(() => {
     if (!accessToken) {
@@ -30,6 +32,7 @@ export default function DashboardLayout({
     }
 
     const fetchAndSyncWorkspaces = async () => {
+      setSyncingWorkspaces(true);
       try {
         const fetched = await apiRequest<Workspace[]>('/workspaces');
         setWorkspaces(fetched);
@@ -42,6 +45,8 @@ export default function DashboardLayout({
         }
       } catch (err) {
         console.error('Failed to sync workspaces:', err);
+      } finally {
+        setSyncingWorkspaces(false);
       }
     };
 
@@ -76,6 +81,60 @@ export default function DashboardLayout({
       setLoading(false);
     }
   };
+
+  if (syncingWorkspaces) {
+    return <PageLoader text="Syncing workspace settings..." />;
+  }
+
+  if (workspaces.length === 0) {
+    return (
+      <div className="fixed inset-0 bg-slate-950 flex flex-col items-center justify-center p-6 relative overflow-hidden">
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,#0f172a_1px,transparent_1px),linear-gradient(to_bottom,#0f172a_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)]" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-primary/10 rounded-full blur-[120px] pointer-events-none" />
+
+        <div className="w-full max-w-md glass glass-glow p-8 rounded-2xl border border-white/10 shadow-2xl relative z-10 space-y-6">
+          <div className="flex flex-col items-center text-center">
+            <div className="h-12 w-12 rounded-xl bg-gradient-to-tr from-primary to-blue-500 flex items-center justify-center shadow-lg shadow-primary/20 mb-4">
+              <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+              </svg>
+            </div>
+            <h3 className="text-xl font-bold text-white">Create Your First Workspace</h3>
+            <p className="text-xs text-muted-foreground mt-2 max-w-xs">
+              Welcome to JaguAI! To get started, please create a workspace for your company or support team.
+            </p>
+          </div>
+
+          <form onSubmit={handleCreateWorkspace} className="space-y-4">
+            <div>
+              <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+                Workspace Name
+              </label>
+              <input
+                type="text"
+                required
+                value={newWorkspaceName}
+                onChange={(e) => setNewWorkspaceName(e.target.value)}
+                placeholder="e.g. Acme Corp Support"
+                className="w-full px-4 py-3 bg-slate-950/40 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-primary text-sm"
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full py-3 bg-gradient-to-r from-primary to-blue-500 text-primary-foreground font-semibold rounded-xl hover:opacity-90 disabled:opacity-50 text-sm mt-2 flex items-center justify-center gap-2 shadow-lg shadow-primary/10"
+            >
+              {loading ? (
+                <Spinner className="h-5 w-5 border-white" />
+              ) : (
+                'Create Workspace'
+              )}
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+  }
 
   const navItems = [
     {
