@@ -61,15 +61,13 @@ export default function Home() {
         }
         router.push('/dashboard');
       } else if (view === 'register') {
-        const registerRes = await apiRequest<{ success: boolean }>('/auth/register', {
+        await apiRequest<any>('/auth/register', {
           method: 'POST',
           body: JSON.stringify({ email, password, name }),
         });
 
-        if (registerRes.success) {
-          setView('login');
-          setSuccess('Registration successful! Please login with your credentials.');
-        }
+        setView('login');
+        setSuccess('Registration successful! Please login with your credentials.');
       } else if (view === 'forgot') {
         const forgotRes = await apiRequest<{ success: boolean; token: string }>('/auth/forgot-password', {
           method: 'POST',

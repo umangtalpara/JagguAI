@@ -9,7 +9,9 @@ import { Spinner, CardSkeleton } from '../../components/ui/Loader';
 interface ApiKeyResponse {
   id: string;
   name: string;
-  keyMask: string;
+  keyMask?: string;
+  keyMasked?: string;
+  apiKey?: string;
   keyPlain?: string;
   createdAt: string;
 }
@@ -89,8 +91,9 @@ export default function DashboardOverview() {
         body: JSON.stringify({ name: newKeyName }),
       });
 
-      if (res.keyPlain) {
-        setGeneratedKey(res.keyPlain);
+      const plainKey = res.apiKey || res.keyPlain;
+      if (plainKey) {
+        setGeneratedKey(plainKey);
       }
       setNewKeyName('');
       fetchKeys();
@@ -101,7 +104,7 @@ export default function DashboardOverview() {
     }
   };
 
-  const activeApiKey = keys[0]?.keyMask || 'YOUR_API_KEY';
+  const activeApiKey = keys[0]?.keyMasked || keys[0]?.keyMask || 'YOUR_API_KEY';
   const embedCode = `<script src="http://localhost:3001/api/v1/widget/script.js" data-api-key="${activeApiKey}" defer></script>`;
 
   return (
@@ -206,7 +209,7 @@ export default function DashboardOverview() {
                 <div key={k.id} className="flex items-center justify-between p-3 bg-slate-950/40 rounded-xl border border-white/5">
                   <div className="flex flex-col">
                     <span className="text-xs font-semibold text-white">{k.name}</span>
-                    <code className="text-[10px] text-muted-foreground">{k.keyMask}</code>
+                    <code className="text-[10px] text-muted-foreground">{k.keyMasked || k.keyMask}</code>
                   </div>
                   <span className="text-[10px] text-muted-foreground">
                     {new Date(k.createdAt).toLocaleDateString()}
