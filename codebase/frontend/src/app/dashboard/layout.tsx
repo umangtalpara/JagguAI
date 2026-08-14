@@ -26,8 +26,27 @@ export default function DashboardLayout({
   useEffect(() => {
     if (!accessToken) {
       router.push('/');
+      return;
     }
-  }, [accessToken, router]);
+
+    const fetchAndSyncWorkspaces = async () => {
+      try {
+        const fetched = await apiRequest<Workspace[]>('/workspaces');
+        setWorkspaces(fetched);
+        if (fetched.length > 0) {
+          const activeId = useAuthStore.getState().currentWorkspace?.id;
+          const exists = fetched.some(w => w.id === activeId);
+          if (!activeId || !exists) {
+            setCurrentWorkspace(fetched[0]);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to sync workspaces:', err);
+      }
+    };
+
+    fetchAndSyncWorkspaces();
+  }, [accessToken, router, setWorkspaces, setCurrentWorkspace]);
 
   if (!accessToken) {
     return null;

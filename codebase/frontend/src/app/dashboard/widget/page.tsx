@@ -40,7 +40,18 @@ export default function WidgetCustomizer() {
     }
     try {
       const res = await apiRequest<WidgetSettings>(`/workspaces/${currentWorkspace.id}/widget`);
-      setSettings(res);
+      if (res) {
+        setSettings({
+          primaryColor: res.primaryColor || '#2563eb',
+          logoUrl: res.logoUrl || '',
+          avatarUrl: res.avatarUrl || '',
+          greeting: res.greeting || 'Hello! How can I help you today?',
+          theme: res.theme || 'light',
+          position: res.position || 'bottom-right',
+          voiceEnabled: typeof res.voiceEnabled === 'boolean' ? res.voiceEnabled : true,
+          suggestedQuestions: res.suggestedQuestions || [],
+        });
+      }
     } catch (err) {
       console.error(err);
     }
