@@ -71,10 +71,41 @@ export class QdrantService implements OnModuleInit {
         }
         console.log(`Qdrant collection ${collectionName} verified with dimensions ${dimensions}`);
       }
+
+      // Ensure payload indexes exist for filter-based delete operations (required by Qdrant Cloud)
+      await this.ensurePayloadIndexes(collectionName);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Unknown error';
       console.error(`Failed to initialize Qdrant: ${msg}`);
       throw err;
+    }
+  }
+
+  private async ensurePayloadIndexes(collectionName: string): Promise<void> {
+    const fields = [
+      { field_name: 'fileId', field_schema: 'keyword' },
+      { field_name: 'workspaceId', field_schema: 'keyword' },
+    ];
+
+    for (const field of fields) {
+      try {
+        const res = await fetch(`${this.qdrantUrl}/collections/${collectionName}/index`, {
+          method: 'PUT',
+          headers: {
+            ...this.getHeaders(),
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(field),
+        });
+        if (res.ok || res.status === 400) {
+          // 400 means index already exists which is fine
+          console.log(`Payload index ensured for field: ${field.field_name} in collection ${collectionName}`);
+        } else {
+          console.warn(`Failed to ensure payload index for ${field.field_name}: ${res.statusText}`);
+        }
+      } catch (err) {
+        console.warn(`Could not create payload index for ${field.field_name}:`, err);
+      }
     }
   }
 

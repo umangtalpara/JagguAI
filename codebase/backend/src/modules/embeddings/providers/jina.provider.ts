@@ -10,7 +10,7 @@ export class JinaEmbeddingProvider implements EmbeddingProvider {
   constructor(private readonly configService: ConfigService) {
     this.apiKey = this.configService.get<string>('JINA_API_KEY');
     this.baseUrl = this.configService.get<string>('JINA_BASE_URL') || 'https://api.jina.ai/v1';
-    this.modelName = this.configService.get<string>('EMBEDDING_MODEL') || 'jina-embeddings-v2-base-en';
+    this.modelName = this.configService.get<string>('EMBEDDING_MODEL') || 'jina-embeddings-v3';
     this.dimensions = parseInt(this.configService.get<string>('EMBEDDING_DIMENSIONS') || '768', 10);
   }
 
@@ -50,7 +50,7 @@ export class JinaEmbeddingProvider implements EmbeddingProvider {
   }
 
   private async embedBatchWithRetry(batch: string[], retries = 3, delay = 500): Promise<number[][]> {
-    const url = `${this.baseUrl}/embeddings`;
+    const url = this.baseUrl.endsWith('/embeddings') ? this.baseUrl : `${this.baseUrl}/embeddings`;
     
     try {
       const response = await fetch(url, {
@@ -61,7 +61,9 @@ export class JinaEmbeddingProvider implements EmbeddingProvider {
         },
         body: JSON.stringify({
           model: this.modelName,
-          input: batch,
+          task: 'retrieval.passage',
+          normalized: true,
+          input: batch.map((text) => ({ text })),
         }),
       });
 
@@ -100,7 +102,8 @@ export class JinaEmbeddingProvider implements EmbeddingProvider {
       return { status: 'error', message: 'JINA_API_KEY environment variable is not configured' };
     }
     try {
-      const response = await fetch(`${this.baseUrl}/embeddings`, {
+      const url = this.baseUrl.endsWith('/embeddings') ? this.baseUrl : `${this.baseUrl}/embeddings`;
+      const response = await fetch(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -108,7 +111,9 @@ export class JinaEmbeddingProvider implements EmbeddingProvider {
         },
         body: JSON.stringify({
           model: this.modelName,
-          input: ['healthcheck'],
+          task: 'retrieval.passage',
+          normalized: true,
+          input: [{ text: 'healthcheck' }],
         }),
       });
       if (response.ok) {
