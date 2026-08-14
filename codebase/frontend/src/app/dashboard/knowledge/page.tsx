@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react';
 import { useAuthStore } from '../../../stores/auth-store';
 import { apiRequest } from '../../../lib/api';
+import { Notification } from '../../../components/ui/Notification';
+import { Spinner, PageLoader } from '../../../components/ui/Loader';
 
 interface KnowledgeFile {
   id: string;
@@ -228,15 +230,11 @@ export default function KnowledgeBase() {
         </p>
       </div>
 
-      {message.text && (
-        <div className={`p-4 rounded-xl border text-sm ${
-          message.type === 'success'
-            ? 'bg-primary/10 border-primary/20 text-primary'
-            : 'bg-destructive/10 border-destructive/20 text-destructive-foreground'
-        }`}>
-          {message.text}
-        </div>
-      )}
+      <Notification
+        text={message.text}
+        type={message.type as 'success' | 'error' | ''}
+        onClose={() => setMessage({ text: '', type: '' })}
+      />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="glass p-6 rounded-2xl border border-white/5 space-y-6 lg:col-span-1">
@@ -275,9 +273,13 @@ export default function KnowledgeBase() {
               <button
                 type="submit"
                 disabled={uploading || !selectedFile}
-                className="w-full py-2.5 bg-primary text-primary-foreground font-semibold rounded-xl hover:opacity-90 disabled:opacity-50 text-xs"
+                className="w-full py-2.5 bg-primary text-primary-foreground font-semibold rounded-xl hover:opacity-90 disabled:opacity-50 text-xs flex items-center justify-center gap-2"
               >
-                {uploading ? 'Uploading...' : 'Index Document'}
+                {uploading ? (
+                  <Spinner className="h-4 w-4 border-primary-foreground" />
+                ) : (
+                  'Index Document'
+                )}
               </button>
             </form>
           )}
@@ -310,9 +312,13 @@ export default function KnowledgeBase() {
               <button
                 type="submit"
                 disabled={crawling}
-                className="w-full py-2.5 bg-primary text-primary-foreground font-semibold rounded-xl hover:opacity-90 disabled:opacity-50 text-xs"
+                className="w-full py-2.5 bg-primary text-primary-foreground font-semibold rounded-xl hover:opacity-90 disabled:opacity-50 text-xs flex items-center justify-center gap-2"
               >
-                {crawling ? 'Crawling...' : 'Run Web Crawler'}
+                {crawling ? (
+                  <Spinner className="h-4 w-4 border-primary-foreground" />
+                ) : (
+                  'Run Web Crawler'
+                )}
               </button>
             </form>
           )}
@@ -344,9 +350,13 @@ export default function KnowledgeBase() {
               <button
                 type="submit"
                 disabled={savingFaq}
-                className="w-full py-2.5 bg-primary text-primary-foreground font-semibold rounded-xl hover:opacity-90 disabled:opacity-50 text-xs"
+                className="w-full py-2.5 bg-primary text-primary-foreground font-semibold rounded-xl hover:opacity-90 disabled:opacity-50 text-xs flex items-center justify-center gap-2"
               >
-                {savingFaq ? 'Saving...' : 'Add FAQ Pair'}
+                {savingFaq ? (
+                  <Spinner className="h-4 w-4 border-primary-foreground" />
+                ) : (
+                  'Add FAQ Pair'
+                )}
               </button>
             </form>
           )}

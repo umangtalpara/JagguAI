@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react';
 import { useAuthStore } from '../../stores/auth-store';
 import { apiRequest } from '../../lib/api';
+import { Notification } from '../../components/ui/Notification';
+import { Spinner, CardSkeleton } from '../../components/ui/Loader';
 
 interface ApiKeyResponse {
   id: string;
@@ -164,13 +166,21 @@ export default function DashboardOverview() {
             <button
               type="submit"
               disabled={loading}
-              className="px-4 py-2 bg-primary text-primary-foreground font-semibold rounded-xl hover:opacity-90 disabled:opacity-50 text-xs"
+              className="px-4 py-2 bg-primary text-primary-foreground font-semibold rounded-xl hover:opacity-90 disabled:opacity-50 text-xs flex items-center justify-center gap-2"
             >
-              Generate
+              {loading ? (
+                <Spinner className="h-4 w-4 border-primary-foreground" />
+              ) : (
+                'Generate'
+              )}
             </button>
           </form>
 
-          {error && <p className="text-xs text-destructive">{error}</p>}
+          <Notification
+            text={error}
+            type={error ? 'error' : ''}
+            onClose={() => setError('')}
+          />
 
           {generatedKey && (
             <div className="p-4 bg-primary/10 border border-primary/20 rounded-xl space-y-2">

@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '../stores/auth-store';
 import { apiRequest } from '../lib/api';
+import { Notification } from '../components/ui/Notification';
+import { Spinner } from '../components/ui/Loader';
 
 interface AuthResponse {
   accessToken: string;
@@ -22,11 +24,13 @@ interface WorkspaceResponse {
 export default function Home() {
   const router = useRouter();
   const { user, setAuth, setWorkspaces, setCurrentWorkspace } = useAuthStore();
-  const [isLogin, setIsLogin] = useState(true);
+  const [view, setView] = useState<'login' | 'register' | 'forgot' | 'reset'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
+  const [resetToken, setResetToken] = useState('');
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -38,10 +42,11 @@ export default function Home() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setSuccess('');
     setLoading(true);
 
     try {
-      if (isLogin) {
+      if (view === 'login') {
         const res = await apiRequest<AuthResponse>('/auth/login', {
           method: 'POST',
           body: JSON.stringify({ email, password }),
@@ -55,15 +60,34 @@ export default function Home() {
           setCurrentWorkspace(workspaces[0]);
         }
         router.push('/dashboard');
-      } else {
+      } else if (view === 'register') {
         const registerRes = await apiRequest<{ success: boolean }>('/auth/register', {
           method: 'POST',
           body: JSON.stringify({ email, password, name }),
         });
 
         if (registerRes.success) {
-          setIsLogin(true);
-          setError('Registration successful! Please login.');
+          setView('login');
+          setSuccess('Registration successful! Please login with your credentials.');
+        }
+      } else if (view === 'forgot') {
+        const forgotRes = await apiRequest<{ success: boolean; token: string }>('/auth/forgot-password', {
+          method: 'POST',
+          body: JSON.stringify({ email }),
+        });
+        if (forgotRes.success) {
+          setSuccess(`Reset token generated: ${forgotRes.token}`);
+          setResetToken(forgotRes.token);
+          setView('reset');
+        }
+      } else if (view === 'reset') {
+        const resetRes = await apiRequest<{ success: boolean }>('/auth/reset-password', {
+          method: 'POST',
+          body: JSON.stringify({ email, token: resetToken, newPassword: password }),
+        });
+        if (resetRes.success) {
+          setView('login');
+          setSuccess('Password reset successful! Please sign in with your new password.');
         }
       }
     } catch (err: unknown) {
@@ -96,13 +120,22 @@ export default function Home() {
           </p>
         </div>
 
-        <div className="glass glass-glow p-8 rounded-2xl border border-white/10 shadow-2xl">
-          <h2 className="text-xl font-semibold text-white mb-6">
-            {isLogin ? 'Sign in to dashboard' : 'Create your account'}
+        <div className="glass glass-glow p-8 rounded-2xl border border-white/10 shadow-2xl space-y-6">
+          <h2 className="text-xl font-semibold text-white">
+            {view === 'login' && 'Sign in to dashboard'}
+            {view === 'register' && 'Create your account'}
+            {view === 'forgot' && 'Forgot Password'}
+            {view === 'reset' && 'Reset Password'}
           </h2>
 
+          <Notification
+            text={error || success}
+            type={error ? 'error' : success ? 'success' : ''}
+            onClose={() => { setError(''); setSuccess(''); }}
+          />
+
           <form onSubmit={handleSubmit} className="space-y-4">
-            {!isLogin && (
+            {view === 'register' && (
               <div>
                 <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
                   Full Name
@@ -132,23 +165,35 @@ export default function Home() {
               />
             </div>
 
-            <div>
-              <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-                Password
-              </label>
-              <input
-                type="password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                className="w-full px-4 py-3 bg-slate-950/40 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-primary transition-colors text-sm"
-              />
-            </div>
+            {view === 'reset' && (
+              <div>
+                <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+                  Reset Token
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={resetToken}
+                  onChange={(e) => setResetToken(e.target.value)}
+                  placeholder="Paste your reset token here"
+                  className="w-full px-4 py-3 bg-slate-950/40 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-primary transition-colors text-sm"
+                />
+              </div>
+            )}
 
-            {error && (
-              <div className="p-3 bg-destructive/15 border border-destructive/20 text-destructive-foreground rounded-xl text-xs">
-                {error}
+            {(view === 'login' || view === 'register' || view === 'reset') && (
+              <div>
+                <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+                  {view === 'reset' ? 'New Password' : 'Password'}
+                </label>
+                <input
+                  type="password"
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="w-full px-4 py-3 bg-slate-950/40 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-primary transition-colors text-sm"
+                />
               </div>
             )}
 
@@ -158,25 +203,54 @@ export default function Home() {
               className="w-full py-3 bg-gradient-to-r from-primary to-blue-500 text-primary-foreground font-semibold rounded-xl hover:opacity-90 transition-opacity disabled:opacity-50 text-sm mt-6 flex items-center justify-center gap-2 shadow-lg shadow-primary/10"
             >
               {loading ? (
-                <div className="h-5 w-5 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
-              ) : isLogin ? (
+                <Spinner className="h-5 w-5 border-white" />
+              ) : view === 'login' ? (
                 'Sign In'
-              ) : (
+              ) : view === 'register' ? (
                 'Sign Up'
+              ) : view === 'forgot' ? (
+                'Request Token'
+              ) : (
+                'Reset Password'
               )}
             </button>
           </form>
 
-          <div className="mt-6 pt-6 border-t border-white/5 text-center">
+          <div className="mt-6 pt-6 border-t border-white/5 flex flex-col gap-3 text-center">
             <button
               onClick={() => {
-                setIsLogin(!isLogin);
+                setView(view === 'login' ? 'register' : 'login');
                 setError('');
+                setSuccess('');
               }}
               className="text-xs text-primary hover:underline"
             >
-              {isLogin ? "Don't have an account? Sign up" : 'Already have an account? Sign in'}
+              {view === 'login' ? "Don't have an account? Sign up" : 'Already have an account? Sign in'}
             </button>
+            {view === 'login' && (
+              <button
+                onClick={() => {
+                  setView('forgot');
+                  setError('');
+                  setSuccess('');
+                }}
+                className="text-xs text-muted-foreground hover:text-white transition-colors"
+              >
+                Forgot your password?
+              </button>
+            )}
+            {view === 'forgot' && (
+              <button
+                onClick={() => {
+                  setView('login');
+                  setError('');
+                  setSuccess('');
+                }}
+                className="text-xs text-muted-foreground hover:text-white transition-colors"
+              >
+                Back to Sign In
+              </button>
+            )}
           </div>
         </div>
       </div>

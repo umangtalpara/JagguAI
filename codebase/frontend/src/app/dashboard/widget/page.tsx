@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react';
 import { useAuthStore } from '../../../stores/auth-store';
 import { apiRequest } from '../../../lib/api';
+import { Notification } from '../../../components/ui/Notification';
+import { Spinner } from '../../../components/ui/Loader';
 
 interface WidgetSettings {
   primaryColor: string;
@@ -30,7 +32,7 @@ export default function WidgetCustomizer() {
 
   const [saving, setSaving] = useState(false);
   const [newQuestion, setNewQuestion] = useState('');
-  const [message, setMessage] = useState('');
+  const [message, setMessage] = useState({ text: '', type: '' });
 
   const fetchSettings = async () => {
     if (!currentWorkspace) {
@@ -54,17 +56,20 @@ export default function WidgetCustomizer() {
       return;
     }
     setSaving(true);
-    setMessage('');
+    setMessage({ text: '', type: '' });
 
     try {
       await apiRequest(`/workspaces/${currentWorkspace.id}/widget`, {
         method: 'PATCH',
         body: JSON.stringify(settings),
       });
-      setMessage('Widget settings updated successfully.');
-      setTimeout(() => setMessage(''), 4000);
+      setMessage({ text: 'Widget settings updated successfully.', type: 'success' });
+      setTimeout(() => setMessage({ text: '', type: '' }), 4000);
     } catch (err: unknown) {
-      setMessage(err instanceof Error ? err.message : 'Save failed');
+      setMessage({
+        text: err instanceof Error ? err.message : 'Save failed',
+        type: 'error',
+      });
     } finally {
       setSaving(false);
     }
@@ -96,11 +101,11 @@ export default function WidgetCustomizer() {
         </p>
       </div>
 
-      {message && (
-        <div className="p-4 bg-primary/10 border border-primary/20 text-primary text-sm rounded-xl">
-          {message}
-        </div>
-      )}
+      <Notification
+        text={message.text}
+        type={message.type as 'success' | 'error' | ''}
+        onClose={() => setMessage({ text: '', type: '' })}
+      />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <form onSubmit={handleSave} className="glass p-6 rounded-2xl border border-white/5 space-y-6">
@@ -237,9 +242,13 @@ export default function WidgetCustomizer() {
           <button
             type="submit"
             disabled={saving}
-            className="w-full py-2.5 bg-primary text-primary-foreground font-semibold rounded-xl hover:opacity-90 disabled:opacity-50 text-xs"
+            className="w-full py-2.5 bg-primary text-primary-foreground font-semibold rounded-xl hover:opacity-90 disabled:opacity-50 text-xs flex items-center justify-center gap-2"
           >
-            {saving ? 'Saving...' : 'Save Settings'}
+            {saving ? (
+              <Spinner className="h-4 w-4 border-primary-foreground" />
+            ) : (
+              'Save Settings'
+            )}
           </button>
         </form>
 
