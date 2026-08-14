@@ -40,7 +40,7 @@ export class AuthController {
   async login(
     @Body() loginDto: LoginDto,
     @Res({ passthrough: true }) response: Response,
-  ): Promise<UserResponseDto> {
+  ): Promise<any> {
     const { user, accessToken, refreshToken } = await this.authService.login(loginDto);
     
     response.cookie('access_token', accessToken, {
@@ -60,11 +60,14 @@ export class AuthController {
     const userId = (user as unknown as Record<string, unknown>)['_id'];
     const userCreatedAt = (user as unknown as Record<string, unknown>)['createdAt'];
     return {
-      id: String(userId || ''),
-      email: user.email,
-      name: user.name,
-      role: user.role,
-      createdAt: userCreatedAt instanceof Date ? userCreatedAt : new Date(),
+      accessToken,
+      user: {
+        id: String(userId || ''),
+        email: user.email,
+        name: user.name,
+        role: user.role,
+        createdAt: userCreatedAt instanceof Date ? userCreatedAt : new Date(),
+      },
     };
   }
 
