@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { ChatRepository } from './chat.repository';
 import { EmbeddingsService } from '../embeddings/embeddings.service';
 import { QdrantService } from '../qdrant/qdrant.service';
@@ -10,6 +10,8 @@ import { AnalyticsService } from '../analytics/analytics.service';
 
 @Injectable()
 export class ChatService {
+  private readonly logger = new Logger(ChatService.name);
+
   constructor(
     private readonly chatRepository: ChatRepository,
     private readonly embeddingsService: EmbeddingsService,
@@ -27,13 +29,22 @@ export class ChatService {
   }
 
   async *streamResponse(workspaceId: string, visitorId: string, content: string): AsyncGenerator<string, void, unknown> {
+    const shortQ = content.length > 80 ? content.slice(0, 80) + '…' : content;
+    this.logger.log(`[1/6] 💬 New chat request | workspace: ${workspaceId} | visitor: ${visitorId}`);
+    this.logger.log(`[1/6]     Q: "${shortQ}"`);
+
+    // Step 1: Prompt injection check
     if (detectPromptInjection(content)) {
+      this.logger.warn(`[1/6] 🚨 Prompt injection detected — blocking request`);
       yield "Security warning: Potential override or prompt injection attempt detected. Please ask standard customer support questions.";
       return;
     }
 
+    // Step 2: Conversation persistence
+    this.logger.log(`[2/6] 📝 Resolving conversation for visitor...`);
     const convo = await this.getOrCreateConversation(workspaceId, visitorId);
     const convoId = String((convo as unknown as Record<string, unknown>)['_id'] || '');
+    this.logger.log(`[2/6] ✅ Conversation ID: ${convoId}`);
 
     await this.chatRepository.insertMessage({
       conversationId: convoId,
@@ -42,10 +53,30 @@ export class ChatService {
     });
 
     const history = await this.chatRepository.getMessagesByConversation(convoId);
+    this.logger.log(`[2/6]     History messages loaded: ${history.length}`);
 
+    // Step 3: Generate embedding
+    this.logger.log(`[3/6] 🧠 Generating embedding for query...`);
+    const t3 = Date.now();
     const vector = await this.embeddingsService.generateEmbedding(content);
-    const searchResults = await this.qdrantService.searchSimilar(workspaceId, vector, 4);
+    this.logger.log(`[3/6] ✅ Embedding generated (${vector.length} dims) in ${Date.now() - t3}ms`);
 
+    // Step 4: Qdrant similarity search
+    this.logger.log(`[4/6] 🔍 Searching Qdrant for similar context...`);
+    const t4 = Date.now();
+    const searchResults = await this.qdrantService.searchSimilar(workspaceId, vector, 4);
+    this.logger.log(`[4/6] ✅ Found ${searchResults.length} context chunks in ${Date.now() - t4}ms`);
+
+    if (searchResults.length === 0) {
+      this.logger.warn(`[4/6] ⚠️  No context found in knowledge base — LLM will respond without context`);
+    } else {
+      searchResults.forEach((r, i) => {
+        const preview = (r.payload?.content || '').slice(0, 60).replace(/\n/g, ' ');
+        this.logger.log(`[4/6]     [${i + 1}] score=${r.score?.toFixed(3)} | "${preview}..."`);
+      });
+    }
+
+    // Step 5: Build sources metadata
     const uniqueSources: { title: string; url: string }[] = [];
     const seenUrls = new Set<string>();
     for (const r of searchResults) {
@@ -58,11 +89,13 @@ export class ChatService {
     }
 
     if (uniqueSources.length > 0) {
+      this.logger.log(`[4/6]     Sources: ${uniqueSources.map(s => s.url).join(', ')}`);
       yield `[METADATA]:${JSON.stringify({ sources: uniqueSources })}\n`;
     }
 
     const contextText = searchResults.map(r => r.payload?.content || '').join('\n\n');
 
+    // Step 6: Build LLM messages + stream
     const systemPrompt = `You are a helpful and polite AI Customer Support Assistant.
 Answer visitor questions using only the context provided below. If the answer cannot be found in the context, politely state that you do not have that information and offer to escalate to a human. Do not make up facts or links.
 
@@ -80,24 +113,34 @@ ${contextText}
         content: msg.content,
       });
     }
-
-    const startTime = Date.now();
-
     chatMessages.push({ role: 'user', content });
 
+    this.logger.log(`[5/6] 🤖 Sending to LLM (${chatMessages.length} messages, ${contextText.length} chars context)...`);
+    const t5 = Date.now();
+
     let fullReply = '';
+    let chunkCount = 0;
     const stream = this.openaiLlmService.streamChatCompletion(chatMessages);
     for await (const chunk of stream) {
       fullReply += chunk;
+      chunkCount++;
       yield chunk;
     }
 
-    const responseTimeMs = Date.now() - startTime;
+    const responseTimeMs = Date.now() - t5;
+    this.logger.log(`[5/6] ✅ LLM stream complete | ${chunkCount} chunks | ${fullReply.length} chars | ${responseTimeMs}ms`);
+
     const isFailedAnswer = fullReply.toLowerCase().includes('do not have') ||
                            fullReply.toLowerCase().includes("don't have") ||
                            fullReply.toLowerCase().includes("don't know") ||
                            fullReply.toLowerCase().includes('escalate');
 
+    if (isFailedAnswer) {
+      this.logger.warn(`[5/6] ⚠️  Answer flagged as "no info found" — may need more knowledge base content`);
+    }
+
+    // Step 7: Persist & analytics
+    this.logger.log(`[6/6] 💾 Saving assistant reply and logging analytics...`);
     await this.chatRepository.insertMessage({
       conversationId: convoId,
       sender: MessageSender.ASSISTANT,
@@ -111,6 +154,9 @@ ${contextText}
       responseTimeMs,
       isFailedAnswer,
     );
+
+    this.logger.log(`[6/6] ✅ Chat complete | total time: ${Date.now() - t5 + (Date.now() - t5)}ms`);
+    this.logger.log(`────────────────────────────────────────────────`);
   }
 
   async getMessages(workspaceId: string, visitorId: string): Promise<unknown[]> {

@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
 export interface ChatMessage {
@@ -8,6 +8,7 @@ export interface ChatMessage {
 
 @Injectable()
 export class OpenaiLlmService {
+  private readonly logger = new Logger(OpenaiLlmService.name);
   private readonly apiKey?: string;
   private readonly baseUrl: string;
   private readonly model: string;
@@ -15,7 +16,8 @@ export class OpenaiLlmService {
   constructor(private readonly configService: ConfigService) {
     this.apiKey = this.configService.get<string>('LLM_API_KEY');
     this.baseUrl = this.configService.get<string>('LLM_BASE_URL') || 'https://api.openai.com/v1';
-    this.model = this.configService.get<string>('LLM_MODEL') || 'qwen-3';
+    this.model = this.configService.get<string>('LLM_MODEL') || 'gpt-4o';
+    this.logger.log(`LLM configured → model: ${this.model} | base: ${this.baseUrl}`);
   }
 
   async *streamChatCompletion(messages: ChatMessage[]): AsyncGenerator<string, void, unknown> {
@@ -32,11 +34,17 @@ export class OpenaiLlmService {
     }
 
     try {
-      const response = await fetch(`${this.baseUrl}/chat/completions`, {
+      const completionsUrl = this.baseUrl.endsWith('/chat/completions')
+        ? this.baseUrl
+        : `${this.baseUrl}/chat/completions`;
+      this.logger.log(`→ POST ${completionsUrl} | model: ${this.model} | messages: ${messages.length}`);
+      const t = Date.now();
+      const response = await fetch(completionsUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${this.apiKey}`,
+          'x-rotation-strategy': 'priority',
         },
         body: JSON.stringify({
           model: this.model,
@@ -46,8 +54,13 @@ export class OpenaiLlmService {
       });
 
       if (!response.ok) {
+        const errText = await response.text();
+        this.logger.error(`LLM API error ${response.status} ${response.statusText}: ${errText.slice(0, 200)}`);
         throw new Error(`LLM API returned ${response.status}: ${response.statusText}`);
       }
+
+      this.logger.log(`← LLM connection established (${Date.now() - t}ms) — streaming...`);
+      let totalChunks = 0;
 
       const reader = response.body?.getReader();
       if (!reader) {
@@ -79,9 +92,12 @@ export class OpenaiLlmService {
           if (cleanLine.startsWith('data: ')) {
             try {
               const dataStr = cleanLine.substring(6);
-              const data = JSON.parse(dataStr) as { choices?: { delta?: { content?: string } }[] };
-              const content = data.choices?.[0]?.delta?.content;
+              const data = JSON.parse(dataStr) as { choices?: { delta?: { content?: string; reasoning?: string } }[] };
+              const delta = data.choices?.[0]?.delta;
+              // Only yield actual content, skip reasoning/thinking chunks from models like DeepSeek
+              const content = delta?.content;
               if (content) {
+                totalChunks++;
                 yield content;
               }
             } catch {
@@ -92,7 +108,7 @@ export class OpenaiLlmService {
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Unknown LLM error';
-      console.error(`LLM streaming error: ${msg}`);
+      this.logger.error(`LLM streaming error: ${msg}`);
       yield `[Error communicating with LLM: ${msg}]`;
     }
   }
