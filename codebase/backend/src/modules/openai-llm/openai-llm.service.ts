@@ -50,11 +50,28 @@ export class OpenaiLlmService {
           model: this.model,
           messages,
           stream: true,
-          // Disable Qwen3 chain-of-thought thinking mode — prevents reasoning
-          // tokens from leaking into the streamed chat response
+          temperature: 0.2,
+          // Disable Qwen3 chain-of-thought thinking mode for LM Studio & llama.cpp
           enable_thinking: false,
+          chat_template_kwargs: { enable_thinking: false },
           // Cap response length to keep answers concise for a chat widget
           max_tokens: 300,
+          // Stop sequences to prevent model from hallucinating dialog transcripts or repetition
+          stop: [
+            "$$",
+            "\n$$",
+            "The answer is in the CONTEXT",
+            "The answer is in",
+            "\nAnswer:",
+            "\n\nAnswer:",
+            "Assistant's response:",
+            "\nAssistant's response:",
+            "\nAssistant:",
+            "\nUser:",
+            "\nHuman:",
+            "<|im_end|>",
+            "<|endoftext|>"
+          ],
         }),
       });
 
@@ -74,6 +91,7 @@ export class OpenaiLlmService {
 
       const decoder = new TextDecoder('utf8');
       let buffer = '';
+      let isInsideThinkingBlock = false;
 
       while (true) {
         const { done, value } = await reader.read();
@@ -97,13 +115,51 @@ export class OpenaiLlmService {
           if (cleanLine.startsWith('data: ')) {
             try {
               const dataStr = cleanLine.substring(6);
-              const data = JSON.parse(dataStr) as { choices?: { delta?: { content?: string; reasoning?: string } }[] };
+              const data = JSON.parse(dataStr) as {
+                choices?: {
+                  delta?: {
+                    content?: string;
+                    reasoning?: string;
+                    reasoning_content?: string;
+                  };
+                }[];
+              };
               const delta = data.choices?.[0]?.delta;
-              // Only yield actual content, skip reasoning/thinking chunks from models like DeepSeek
-              const content = delta?.content;
+
+              // Ignore reasoning or reasoning_content fields
+              if (delta?.reasoning || delta?.reasoning_content) {
+                continue;
+              }
+
+              let content = delta?.content;
               if (content) {
-                totalChunks++;
-                yield content;
+                // If model outputs $ or $$ delimiter (Qwen3 thinking separator), cut off immediately without yielding the symbol
+                if (content.includes('$')) {
+                  const cleanPart = content.split('$')[0];
+                  if (cleanPart && cleanPart.trim()) {
+                    yield cleanPart;
+                  }
+                  return;
+                }
+
+                // Filter out <think>...</think> tags if model emits them in content
+                if (content.includes('<think>')) {
+                  isInsideThinkingBlock = true;
+                  content = content.replace(/<think>[\s\S]*/, '');
+                }
+                if (isInsideThinkingBlock) {
+                  if (content.includes('</think>')) {
+                    isInsideThinkingBlock = false;
+                    content = content.replace(/[\s\S]*<\/think>/, '');
+                  } else {
+                    continue;
+                  }
+                }
+
+                if (content.trim()) {
+                  totalChunks++;
+                  yield content;
+                }
               }
             } catch {
               // Ignore parse errors on partial streams

@@ -64,8 +64,8 @@ export class ChatService {
     // Step 4: Qdrant similarity search
     this.logger.log(`[4/6] 🔍 Searching Qdrant for similar context...`);
     const t4 = Date.now();
-    // Fetch 3 chunks max — qwen3-1.7b has only 8192 token context window
-    const searchResults = await this.qdrantService.searchSimilar(workspaceId, vector, 3);
+    // Fetch top 5 chunks to ensure broad context across all uploaded documents & crawl sources
+    const searchResults = await this.qdrantService.searchSimilar(workspaceId, vector, 5);
     this.logger.log(`[4/6] ✅ Found ${searchResults.length} context chunks in ${Date.now() - t4}ms`);
 
     if (searchResults.length === 0) {
@@ -77,9 +77,8 @@ export class ChatService {
       });
     }
 
-    // Score gate: only keep chunks above relevance threshold to prevent
-    // the model from hallucinating answers from weak/unrelated matches
-    const RELEVANCE_THRESHOLD = 0.35;
+    // Score gate: 0.15 threshold ensures short questions like "what is provenpeak?" are matched
+    const RELEVANCE_THRESHOLD = 0.15;
     const relevantResults = searchResults.filter(r => (r.score ?? 0) >= RELEVANCE_THRESHOLD);
 
     this.logger.log(
@@ -118,31 +117,23 @@ export class ChatService {
       return;
     }
 
-    // Truncate each chunk and cap total context to stay within model context window.
-    // qwen3-1.7b: 8192 token limit. System prompt ~300 tokens, history ~400 tokens,
-    // query ~50 tokens → leave ~2000 chars (~500 tokens) for context.
-    const MAX_CHUNK_CHARS = 600;
-    const MAX_CONTEXT_CHARS = 2000;
+    // Full 1000 char chunks matching the ingestion processor chunk size
+    const MAX_CHUNK_CHARS = 1000;
+    const MAX_CONTEXT_CHARS = 3500;
     const contextText = relevantResults
       .map(r => (r.payload?.content || '').slice(0, MAX_CHUNK_CHARS))
       .join('\n\n')
       .slice(0, MAX_CONTEXT_CHARS);
-    this.logger.log(`[4/6]     Context size: ${contextText.length} chars`);
+    this.logger.log(`[4/6]     Context size: ${contextText.length} chars (~${Math.round(contextText.length / 4)} tokens)`);
 
     // Step 6: Build LLM messages + stream
     // /no_think — Qwen3-specific token to disable chain-of-thought reasoning mode
     const systemPrompt = `/no_think
-You are a customer support assistant. You ONLY answer using the CONTEXT provided below.
+You are the AI assistant for ProvenPeak Solutions.
+Answer the visitor's question directly, clearly, and concisely in 1 to 3 sentences using the facts in the CONTEXT below.
+Do not start with "The CONTEXT says" or "Based on the context". Answer directly.
 
-STRICT RULES — you MUST follow all of these:
-- ONLY use information that appears word-for-word or by clear inference in the CONTEXT below.
-- Do NOT use your training data, general knowledge, or anything from the internet.
-- Do NOT make up, assume, or infer facts that are not explicitly in the CONTEXT.
-- If the CONTEXT does not contain the answer, respond EXACTLY: "I don't have that information in my knowledge base. Would you like me to connect you with our team?"
-- Be direct. Answer in 1–3 sentences. Stop immediately after answering.
-- Never add commentary, self-correction, examples, or extra context beyond the answer.
-
-CONTEXT (treat this as the ONLY source of truth):
+CONTEXT:
 ${contextText}`;
 
     const chatMessages: ChatMessage[] = [{ role: 'system', content: systemPrompt }];

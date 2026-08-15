@@ -41,6 +41,11 @@ import { AuditLogsModule } from './modules/audit-logs/audit-logs.module';
         DEEPGRAM_API_KEY: Joi.string().optional(),
         KOKORO_BASE_URL: Joi.string().optional(),
         KOKORO_VOICE: Joi.string().optional(),
+
+        AWS_ACCESS_KEY_ID: Joi.string().optional().allow(''),
+        AWS_SECRET_ACCESS_KEY: Joi.string().optional().allow(''),
+        AWS_REGION: Joi.string().default('us-east-1'),
+        AWS_S3_BUCKET_NAME: Joi.string().optional().allow(''),
       }),
     }),
     MongooseModule.forRootAsync({
