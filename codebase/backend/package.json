@@ -4,8 +4,9 @@
   "private": true,
   "scripts": {
     "build": "nest build",
-    "start": "nest start",
+    "start": "node dist/main",
     "start:dev": "nest start --watch",
+    "start:prod": "node dist/main",
     "test": "jest",
     "git:push-backend": "git subtree push --prefix=codebase/backend jack main"
   },

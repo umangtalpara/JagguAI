@@ -38,13 +38,11 @@ async function bootstrap(): Promise<void> {
     .addBearerAuth()
     .build();
 
-  const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api/v1/docs', app, document);
-
-  const port = process.env['PORT'] || 3001;
-  await app.listen(port);
-  console.log(`Application is running on: http://localhost:${port}/api/v1`);
-  console.log(`Swagger documentation is available on: http://localhost:${port}/api/v1/docs`);
+  const port = Number(process.env['PORT']) || 3001;
+  await app.listen(port, '0.0.0.0');
+  console.log(`Application is running on: http://0.0.0.0:${port}/api/v1`);
+  console.log(`Swagger documentation is available on: http://0.0.0.0:${port}/api/v1/docs`);
+  console.log(`Health check available at: http://0.0.0.0:${port}/api/v1/health`);
 }
 
 // Wait! We can't do NestFactory.create(app) because app isn't defined yet! It should be AppModule.
