@@ -5,7 +5,7 @@ import './globals.css';
 const font = Outfit({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'JaguAI - Enterprise SaaS AI Agent Platform',
+  title: 'jagguAI - Enterprise SaaS AI Agent Platform',
   description: 'Instant customer support chatbots trained on your product docs and crawled website pages.',
 };
 

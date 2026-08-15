@@ -8,7 +8,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Project** | JaguAI MVP Platform |
+| **Project** | jagguAI MVP Platform |
 | **Status** | 🟢 COMPLETED |
 | **Current Phase** | N/A |
 | **Total Phases** | 3 |
@@ -51,7 +51,7 @@
 
 | Event | Date | Notes |
 |-------|------|-------|
-| Project Initialized | 2026-08-02 | JaguAI MVP workspace created and PRD ingested. |
+| Project Initialized | 2026-08-02 | jagguAI MVP workspace created and PRD ingested. |
 
 ---
 

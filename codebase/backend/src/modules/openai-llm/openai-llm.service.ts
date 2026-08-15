@@ -23,8 +23,8 @@ export class OpenaiLlmService {
   async *streamChatCompletion(messages: ChatMessage[]): AsyncGenerator<string, void, unknown> {
     if (!this.apiKey) {
       console.warn('LLM_API_KEY not configured. Running OpenaiLlmService in Mock mode.');
-      const mockResponse = `This is a mock streaming response from JaguAI assistant. I am trained on your knowledge base to answer visitor queries. Since no LLM_API_KEY is configured in the environment, I am responding with this placeholder text. Please configure the LLM_API_KEY and LLM_BASE_URL in your backend .env file to enable Qwen 3 integration.`;
-      
+      const mockResponse = `This is a mock streaming response from jagguAI assistant. I am trained on your knowledge base to answer visitor queries. Since no LLM_API_KEY is configured in the environment, I am responding with this placeholder text. Please configure the LLM_API_KEY and LLM_BASE_URL in your backend .env file to enable Qwen 3 integration.`;
+
       const words = mockResponse.split(' ');
       for (const word of words) {
         yield word + ' ';

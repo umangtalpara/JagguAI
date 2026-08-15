@@ -1,4 +1,4 @@
-# PRD – JaguAI(SaaSBot AI)
+# PRD – jagguAI(SaaSBot AI)
 
 **Version:** 1.0 (MVP)
 
@@ -6,7 +6,7 @@
 
 # Product Name
 
-**Jagu AI**
+**jaggu AI**
 
 **Tagline**
 
@@ -16,7 +16,7 @@ Deploy an AI Chat & Voice Assistant on any website in under 5 minutes.
 
 # 1. Product Vision
 
-JaguAI is a multi-tenant AI platform that enables businesses to create their own AI-powered chat and voice assistant without writing code.
+jagguAI is a multi-tenant AI platform that enables businesses to create their own AI-powered chat and voice assistant without writing code.
 
 Businesses simply:
 
@@ -41,7 +41,7 @@ Many businesses lose potential customers because:
 * Live chat requires human agents
 * Existing AI chatbot solutions are expensive or difficult to configure
 
-JaguAI solves these problems by providing a customizable AI assistant trained on each business's own content.
+jagguAI solves these problems by providing a customizable AI assistant trained on each business's own content.
 
 ---
 
@@ -213,7 +213,7 @@ Customer receives
 
 ```html
 <script
-src="https://cdn.jagu.ai/widget.js"
+src="https://cdn.jaggu.ai/widget.js"
 data-api-key="workspace_key">
 </script>
 ```

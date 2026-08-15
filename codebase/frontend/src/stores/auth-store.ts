@@ -40,7 +40,7 @@ export const useAuthStore = create<AuthState>()(
       setCurrentWorkspace: (workspace) => set({ currentWorkspace: workspace }),
     }),
     {
-      name: 'jagu-auth-storage',
+      name: 'jaggu-auth-storage',
       onRehydrateStorage: () => (state) => {
         state?.setHasHydrated(true);
       },

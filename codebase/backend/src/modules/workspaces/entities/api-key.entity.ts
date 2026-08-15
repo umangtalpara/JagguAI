@@ -10,7 +10,7 @@ export class ApiKey {
   keyHash!: string; // SHA-256 hash for O(1) database lookups
 
   @Prop({ required: true })
-  keyMasked!: string; // e.g. jagu_live_abc123...7890
+  keyMasked!: string; // e.g. jaggu_live_abc123...7890
 
   @Prop({ required: true, trim: true })
   name!: string;

@@ -14,7 +14,7 @@ async function bootstrap(): Promise<void> {
   app.use(helmet());
 
   app.enableCors({
-    origin: process.env['CORS_ALLOWED_ORIGINS'] 
+    origin: process.env['CORS_ALLOWED_ORIGINS']
       ? (process.env['CORS_ALLOWED_ORIGINS'] as string).split(',')
       : ['http://localhost:3000'],
     credentials: true,
@@ -27,16 +27,16 @@ async function bootstrap(): Promise<void> {
     transform: true,
     forbidNonWhitelisted: true,
   }));
-  
+
   app.useGlobalFilters(new HttpExceptionFilter());
 
   const config = new DocumentBuilder()
-    .setTitle('JaguAI API')
+    .setTitle('jagguAI API')
     .setDescription('Deploy an AI Chat & Voice Assistant on any website in under 5 minutes.')
     .setVersion('1.0')
     .addBearerAuth()
     .build();
-  
+
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api/v1/docs', app, document);
 

@@ -1,6 +1,6 @@
 {
   "project": {
-    "name": "JaguAI MVP Platform",
+    "name": "jagguAI MVP Platform",
     "status": "🟢 COMPLETED",
     "startedAt": "2026-08-02",
     "lastUpdated": "2026-08-02",
@@ -143,7 +143,7 @@
     {
       "event": "Project Initialized",
       "date": "2026-08-02",
-      "notes": "JaguAI MVP workspace created and PRD ingested."
+      "notes": "jagguAI MVP workspace created and PRD ingested."
     }
   ]
 }

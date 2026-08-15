@@ -62,7 +62,7 @@ export class DocumentProcessor extends WorkerHost {
         }
         this.logger.log(`Re-fetching URL for reindex: ${fileDoc.url}`);
         const response = await fetch(fileDoc.url, {
-          headers: { 'User-Agent': 'JaguAI-Crawler/1.0' },
+          headers: { 'User-Agent': 'jagguAI-Crawler/1.0' },
           signal: AbortSignal.timeout(15000),
         });
         if (!response.ok) {

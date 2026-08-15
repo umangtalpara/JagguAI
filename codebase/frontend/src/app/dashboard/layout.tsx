@@ -111,7 +111,7 @@ export default function DashboardLayout({
             </div>
             <h3 className="text-xl font-bold text-white">Create Your First Workspace</h3>
             <p className="text-xs text-muted-foreground mt-2 max-w-xs">
-              Welcome to JaguAI! To get started, please create a workspace for your company or support team.
+              Welcome to jagguAI! To get started, please create a workspace for your company or support team.
             </p>
           </div>
 
@@ -194,7 +194,7 @@ export default function DashboardLayout({
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M13 10V3L4 14h7v7l9-11h-7z" />
             </svg>
           </div>
-          <span className="font-bold text-white tracking-wide">JaguAI Panel</span>
+          <span className="font-bold text-white tracking-wide">jagguAI Panel</span>
         </div>
 
         <nav className="flex-1 px-4 py-6 space-y-1.5">
@@ -204,11 +204,10 @@ export default function DashboardLayout({
               <Link
                 key={item.name}
                 href={item.href}
-                className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
-                  isActive
+                className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${isActive
                     ? 'bg-primary/10 text-primary border border-primary/20'
                     : 'text-muted-foreground hover:bg-white/5 hover:text-white'
-                }`}
+                  }`}
               >
                 {item.icon}
                 {item.name}

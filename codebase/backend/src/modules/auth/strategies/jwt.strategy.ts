@@ -31,7 +31,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
         },
       ]),
       ignoreExpiration: false,
-      secretOrKey: configService.get<string>('JWT_SECRET') || 'default_jwt_secret_jagu_platform',
+      secretOrKey: configService.get<string>('JWT_SECRET') || 'default_jwt_secret_jaggu_platform',
     });
   }
 

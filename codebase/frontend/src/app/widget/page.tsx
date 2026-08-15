@@ -61,14 +61,14 @@ function WidgetContent() {
       return;
     }
 
-    let storedVid = localStorage.getItem('jagu-visitor-id');
+    let storedVid = localStorage.getItem('jaggu-visitor-id');
     if (!storedVid) {
       storedVid = crypto.randomUUID();
-      localStorage.setItem('jagu-visitor-id', storedVid);
+      localStorage.setItem('jaggu-visitor-id', storedVid);
     }
     setVisitorId(storedVid);
 
-    const isCaptured = localStorage.getItem('jagu-lead-captured') === 'true';
+    const isCaptured = localStorage.getItem('jaggu-lead-captured') === 'true';
     setLeadCaptured(isCaptured);
 
     fetch(`${API_BASE}/widget/config?apiKey=${apiKey}`)
@@ -80,7 +80,7 @@ function WidgetContent() {
       })
       .then(settings => {
         setConfig(settings);
-        
+
         fetch(`${API_BASE}/chat/workspaces/${settings.workspaceId}/history`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -122,7 +122,7 @@ function WidgetContent() {
         }),
       });
       if (res.ok) {
-        localStorage.setItem('jagu-lead-captured', 'true');
+        localStorage.setItem('jaggu-lead-captured', 'true');
         setLeadCaptured(true);
       }
     } catch (err) {
@@ -259,7 +259,7 @@ function WidgetContent() {
   };
 
   const handleClose = () => {
-    window.parent.postMessage('jagu-close-widget', '*');
+    window.parent.postMessage('jaggu-close-widget', '*');
   };
 
   const renderMarkdown = (text: string) => {
@@ -294,9 +294,8 @@ function WidgetContent() {
   }
 
   return (
-    <div className={`flex flex-col h-screen select-none border rounded-2xl overflow-hidden font-sans transition-all duration-300 ${
-      config.theme === 'light' ? 'bg-white text-slate-800 border-slate-200' : 'bg-slate-950 text-white border-white/5'
-    }`}>
+    <div className={`flex flex-col h-screen select-none border rounded-2xl overflow-hidden font-sans transition-all duration-300 ${config.theme === 'light' ? 'bg-white text-slate-800 border-slate-200' : 'bg-slate-950 text-white border-white/5'
+      }`}>
       <div
         className="p-4 flex items-center justify-between shadow-md shadow-black/20"
         style={{ backgroundColor: config.primaryColor }}
@@ -323,15 +322,14 @@ function WidgetContent() {
       </div>
 
       {!leadCaptured ? (
-        <div className={`flex-1 flex flex-col justify-center p-6 ${
-          config.theme === 'light' ? 'bg-slate-50' : 'bg-slate-950/80 backdrop-blur-md'
-        }`}>
+        <div className={`flex-1 flex flex-col justify-center p-6 ${config.theme === 'light' ? 'bg-slate-50' : 'bg-slate-950/80 backdrop-blur-md'
+          }`}>
           <form onSubmit={handleLeadSubmit} className="space-y-4">
             <div className="text-center space-y-1.5 mb-6">
               <h4 className={`text-sm font-bold ${config.theme === 'light' ? 'text-slate-800' : 'text-white'}`}>Let's get started!</h4>
               <p className="text-[10px] text-slate-400">Please introduce yourself to start chatting with support.</p>
             </div>
-            
+
             <div className="space-y-1">
               <label className="text-[10px] text-slate-400 block font-medium">Name</label>
               <input
@@ -340,11 +338,10 @@ function WidgetContent() {
                 value={leadName}
                 onChange={(e) => setLeadName(e.target.value)}
                 placeholder="John Doe"
-                className={`w-full rounded-xl px-3.5 py-2.5 text-xs focus:outline-none transition-all ${
-                  config.theme === 'light'
+                className={`w-full rounded-xl px-3.5 py-2.5 text-xs focus:outline-none transition-all ${config.theme === 'light'
                     ? 'bg-slate-200/50 border border-slate-300 text-slate-800 placeholder-slate-400 focus:border-primary/50'
                     : 'bg-white/5 border border-white/10 focus:border-primary/50 text-white placeholder-slate-500'
-                }`}
+                  }`}
               />
             </div>
 
@@ -356,11 +353,10 @@ function WidgetContent() {
                 value={leadEmail}
                 onChange={(e) => setLeadEmail(e.target.value)}
                 placeholder="john@example.com"
-                className={`w-full rounded-xl px-3.5 py-2.5 text-xs focus:outline-none transition-all ${
-                  config.theme === 'light'
+                className={`w-full rounded-xl px-3.5 py-2.5 text-xs focus:outline-none transition-all ${config.theme === 'light'
                     ? 'bg-slate-200/50 border border-slate-300 text-slate-800 placeholder-slate-400 focus:border-primary/50'
                     : 'bg-white/5 border border-white/10 focus:border-primary/50 text-white placeholder-slate-500'
-                }`}
+                  }`}
               />
             </div>
 
@@ -376,9 +372,8 @@ function WidgetContent() {
         </div>
       ) : (
         <>
-          <div className={`flex-1 p-4 overflow-y-auto space-y-4 scrollbar-thin scrollbar-thumb-white/5 ${
-            config.theme === 'light' ? 'bg-slate-50' : 'bg-slate-950/60'
-          }`}>
+          <div className={`flex-1 p-4 overflow-y-auto space-y-4 scrollbar-thin scrollbar-thumb-white/5 ${config.theme === 'light' ? 'bg-slate-50' : 'bg-slate-950/60'
+            }`}>
             {messages.map((msg, index) => {
               const isBot = msg.sender === 'assistant';
               return (
@@ -392,13 +387,12 @@ function WidgetContent() {
                   ) : (
                     <div className="h-7 w-7 rounded-full flex items-center justify-center text-[10px] font-bold text-primary border border-primary/20 bg-primary/10">ME</div>
                   )}
-                  <div className={`max-w-[75%] p-3.5 rounded-2xl text-xs leading-relaxed border ${
-                    isBot
+                  <div className={`max-w-[75%] p-3.5 rounded-2xl text-xs leading-relaxed border ${isBot
                       ? config.theme === 'light'
                         ? 'bg-slate-200/70 border-slate-300/40 text-slate-900 rounded-bl-none'
                         : 'bg-slate-900/60 border-white/5 text-slate-100 rounded-bl-none'
                       : 'bg-primary/10 border-primary/20 text-primary-foreground rounded-br-none'
-                  }`} style={!isBot ? { backgroundColor: config.primaryColor } : undefined}>
+                    }`} style={!isBot ? { backgroundColor: config.primaryColor } : undefined}>
                     {msg.content ? renderMarkdown(msg.content) : (
                       <div className="flex gap-1.5 py-1">
                         <div className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" />
@@ -440,11 +434,10 @@ function WidgetContent() {
                 <button
                   key={idx}
                   onClick={() => handleSend(q)}
-                  className={`block w-full text-left px-3.5 py-2 border rounded-xl text-[10px] truncate transition-all duration-200 ${
-                    config.theme === 'light'
+                  className={`block w-full text-left px-3.5 py-2 border rounded-xl text-[10px] truncate transition-all duration-200 ${config.theme === 'light'
                       ? 'bg-slate-100 hover:bg-slate-200 border-slate-300/60 text-slate-800'
                       : 'bg-slate-900/40 hover:bg-slate-900 border border-white/5 hover:border-primary/20 text-primary'
-                  }`}
+                    }`}
                 >
                   {q}
                 </button>
@@ -457,34 +450,31 @@ function WidgetContent() {
               e.preventDefault();
               handleSend(inputText);
             }}
-            className={`p-3 border-t flex gap-2 ${
-              config.theme === 'light' ? 'border-slate-200 bg-slate-50' : 'border-white/5 bg-slate-950'
-            }`}
+            className={`p-3 border-t flex gap-2 ${config.theme === 'light' ? 'border-slate-200 bg-slate-50' : 'border-white/5 bg-slate-950'
+              }`}
           >
             <input
               type="text"
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
               placeholder="Ask me anything..."
-              className={`flex-1 rounded-xl px-3.5 py-2.5 text-xs focus:outline-none transition-all duration-200 ${
-                config.theme === 'light'
+              className={`flex-1 rounded-xl px-3.5 py-2.5 text-xs focus:outline-none transition-all duration-200 ${config.theme === 'light'
                   ? 'bg-slate-200/50 border border-slate-300 text-slate-800 placeholder-slate-400 focus:border-primary/40'
                   : 'bg-white/5 focus:bg-white/10 border border-white/5 focus:border-primary/40 text-white placeholder-slate-500'
-              }`}
+                }`}
             />
-            
+
             {/* Microphone Toggle Button (Conditional) */}
             {config.voiceEnabled && (
               <button
                 type="button"
                 onClick={recording ? stopRecording : startRecording}
-                className={`p-2.5 rounded-xl flex items-center justify-center border transition-all ${
-                  recording 
+                className={`p-2.5 rounded-xl flex items-center justify-center border transition-all ${recording
                     ? 'bg-red-500/10 border-red-500 text-red-500 animate-pulse'
                     : config.theme === 'light'
                       ? 'bg-slate-100 border-slate-300 text-slate-600 hover:bg-slate-200'
                       : 'bg-white/5 border-white/5 hover:border-white/10 text-slate-400 hover:text-white'
-                }`}
+                  }`}
               >
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />

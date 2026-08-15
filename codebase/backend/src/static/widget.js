@@ -1,12 +1,12 @@
-(function() {
-  const script = document.currentScript || (function() {
+(function () {
+  const script = document.currentScript || (function () {
     const scripts = document.getElementsByTagName('script');
     return scripts[scripts.length - 1];
   })();
 
   const apiKey = script.getAttribute('data-api-key');
   if (!apiKey) {
-    console.error('JaguAI: data-api-key is required.');
+    console.error('jagguAI: data-api-key is required.');
     return;
   }
 
@@ -24,7 +24,7 @@
       initWidget(config);
     })
     .catch(err => {
-      console.error('JaguAI: Failed to load widget configuration', err);
+      console.error('jagguAI: Failed to load widget configuration', err);
     });
 
   function initWidget(config) {
@@ -32,7 +32,7 @@
     const position = config.position || 'bottom-right';
 
     const bubble = document.createElement('button');
-    bubble.id = 'jagu-chat-bubble';
+    bubble.id = 'jaggu-chat-bubble';
     bubble.style.position = 'fixed';
     bubble.style.bottom = '20px';
     if (position === 'bottom-right') {
@@ -61,7 +61,7 @@
     bubble.onmouseleave = () => bubble.style.transform = 'scale(1)';
 
     const container = document.createElement('div');
-    container.id = 'jagu-chat-container';
+    container.id = 'jaggu-chat-container';
     container.style.position = 'fixed';
     container.style.bottom = '95px';
     if (position === 'bottom-right') {
@@ -109,7 +109,7 @@
       if (event.origin !== frontendUrl) {
         return;
       }
-      if (event.data === 'jagu-close-widget') {
+      if (event.data === 'jaggu-close-widget') {
         isOpen = false;
         container.style.display = 'none';
         bubble.innerHTML = `<svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">

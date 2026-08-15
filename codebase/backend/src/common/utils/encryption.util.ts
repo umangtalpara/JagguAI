@@ -30,7 +30,7 @@ export function decrypt(encryptedText: string): string {
 }
 
 export function generateApiKey(): string {
-  return `jagu_live_${crypto.randomBytes(24).toString('hex')}`;
+  return `jaggu_live_${crypto.randomBytes(24).toString('hex')}`;
 }
 
 export function hashApiKey(apiKey: string): string {

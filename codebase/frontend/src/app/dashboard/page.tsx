@@ -223,7 +223,7 @@ export default function DashboardOverview() {
         <div className="glass p-6 rounded-2xl border border-white/5 space-y-6">
           <h3 className="text-lg font-semibold text-white">Embed Script</h3>
           <p className="text-xs text-muted-foreground">
-            Copy and paste this script tag at the bottom of your HTML body to embed the JaguAI support bubble.
+            Copy and paste this script tag at the bottom of your HTML body to embed the jagguAI support bubble.
           </p>
 
           <div className="relative group">
