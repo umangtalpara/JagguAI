@@ -64,7 +64,8 @@ export class ChatService {
     // Step 4: Qdrant similarity search
     this.logger.log(`[4/6] 🔍 Searching Qdrant for similar context...`);
     const t4 = Date.now();
-    const searchResults = await this.qdrantService.searchSimilar(workspaceId, vector, 4);
+    // Fetch 3 chunks max — qwen3-1.7b has only 8192 token context window
+    const searchResults = await this.qdrantService.searchSimilar(workspaceId, vector, 3);
     this.logger.log(`[4/6] ✅ Found ${searchResults.length} context chunks in ${Date.now() - t4}ms`);
 
     if (searchResults.length === 0) {
@@ -76,10 +77,19 @@ export class ChatService {
       });
     }
 
+    // Score gate: only keep chunks above relevance threshold to prevent
+    // the model from hallucinating answers from weak/unrelated matches
+    const RELEVANCE_THRESHOLD = 0.35;
+    const relevantResults = searchResults.filter(r => (r.score ?? 0) >= RELEVANCE_THRESHOLD);
+
+    this.logger.log(
+      `[4/6]     Relevant chunks after threshold (>=${RELEVANCE_THRESHOLD}): ${relevantResults.length}/${searchResults.length}`,
+    );
+
     // Step 5: Build sources metadata
     const uniqueSources: { title: string; url: string }[] = [];
     const seenUrls = new Set<string>();
-    for (const r of searchResults) {
+    for (const r of relevantResults) {
       const url = r.payload?.sourceUrl;
       const title = r.payload?.heading || 'Source Document';
       if (url && !seenUrls.has(url)) {
@@ -93,20 +103,52 @@ export class ChatService {
       yield `[METADATA]:${JSON.stringify({ sources: uniqueSources })}\n`;
     }
 
-    const contextText = searchResults.map(r => r.payload?.content || '').join('\n\n');
+    // Early exit: if no relevant context found, reply without hitting the LLM.
+    // This prevents the model from falling back to its internet/training knowledge.
+    if (relevantResults.length === 0) {
+      this.logger.warn(`[4/6] 🚫 No relevant context above threshold — returning fallback without LLM call`);
+      const fallback = "I'm sorry, I don't have information about that in my knowledge base. Would you like me to connect you with our team for further help?";
+      await this.chatRepository.insertMessage({
+        conversationId: convoId,
+        sender: MessageSender.ASSISTANT,
+        content: fallback,
+      });
+      await this.analyticsService.logMetric(workspaceId, visitorId, content, 0, true);
+      yield fallback;
+      return;
+    }
+
+    // Truncate each chunk and cap total context to stay within model context window.
+    // qwen3-1.7b: 8192 token limit. System prompt ~300 tokens, history ~400 tokens,
+    // query ~50 tokens → leave ~2000 chars (~500 tokens) for context.
+    const MAX_CHUNK_CHARS = 600;
+    const MAX_CONTEXT_CHARS = 2000;
+    const contextText = relevantResults
+      .map(r => (r.payload?.content || '').slice(0, MAX_CHUNK_CHARS))
+      .join('\n\n')
+      .slice(0, MAX_CONTEXT_CHARS);
+    this.logger.log(`[4/6]     Context size: ${contextText.length} chars`);
 
     // Step 6: Build LLM messages + stream
-    const systemPrompt = `You are a helpful and polite AI Customer Support Assistant.
-Answer visitor questions using only the context provided below. If the answer cannot be found in the context, politely state that you do not have that information and offer to escalate to a human. Do not make up facts or links.
+    // /no_think — Qwen3-specific token to disable chain-of-thought reasoning mode
+    const systemPrompt = `/no_think
+You are a customer support assistant. You ONLY answer using the CONTEXT provided below.
 
----
-CONTEXT:
-${contextText}
----`;
+STRICT RULES — you MUST follow all of these:
+- ONLY use information that appears word-for-word or by clear inference in the CONTEXT below.
+- Do NOT use your training data, general knowledge, or anything from the internet.
+- Do NOT make up, assume, or infer facts that are not explicitly in the CONTEXT.
+- If the CONTEXT does not contain the answer, respond EXACTLY: "I don't have that information in my knowledge base. Would you like me to connect you with our team?"
+- Be direct. Answer in 1–3 sentences. Stop immediately after answering.
+- Never add commentary, self-correction, examples, or extra context beyond the answer.
+
+CONTEXT (treat this as the ONLY source of truth):
+${contextText}`;
 
     const chatMessages: ChatMessage[] = [{ role: 'system', content: systemPrompt }];
 
-    const slice = history.slice(-6);
+    // Last 2 messages only — keeps token usage low for small context window models
+    const slice = history.slice(-2);
     for (const msg of slice) {
       chatMessages.push({
         role: msg.sender === MessageSender.VISITOR ? 'user' : 'assistant',

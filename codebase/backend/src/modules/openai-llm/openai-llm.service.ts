@@ -50,6 +50,11 @@ export class OpenaiLlmService {
           model: this.model,
           messages,
           stream: true,
+          // Disable Qwen3 chain-of-thought thinking mode — prevents reasoning
+          // tokens from leaking into the streamed chat response
+          enable_thinking: false,
+          // Cap response length to keep answers concise for a chat widget
+          max_tokens: 300,
         }),
       });
 
