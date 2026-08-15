@@ -14,10 +14,10 @@ async function bootstrap(): Promise<void> {
   app.use(helmet());
 
   app.enableCors({
-    origin: process.env['CORS_ALLOWED_ORIGINS']
-      ? (process.env['CORS_ALLOWED_ORIGINS'] as string).split(',')
-      : ['http://localhost:3000'],
+    origin: true,
     credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
     exposedHeaders: ['X-Transcribed-Text', 'X-Response-Text'],
   });
 
