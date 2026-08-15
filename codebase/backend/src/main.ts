@@ -18,6 +18,7 @@ async function bootstrap(): Promise<void> {
       ? (process.env['CORS_ALLOWED_ORIGINS'] as string).split(',')
       : ['http://localhost:3000'],
     credentials: true,
+    exposedHeaders: ['X-Transcribed-Text', 'X-Response-Text'],
   });
 
   app.use(cookieParser());

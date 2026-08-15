@@ -155,14 +155,12 @@ function WidgetContent() {
     }
   };
 
-  const animateResponseText = (targetIndex: number, fullText: string) => {
+  const animateResponseText = (msgId: string, fullText: string) => {
     if (typeTimerRef.current) clearInterval(typeTimerRef.current);
     if (!fullText) {
-      setMessages((prev) => {
-        const copy = [...prev];
-        if (copy[targetIndex]) copy[targetIndex].content = '';
-        return copy;
-      });
+      setMessages((prev) =>
+        prev.map((m) => (m.id === msgId ? { ...m, content: '' } : m))
+      );
       return;
     }
 
@@ -174,18 +172,14 @@ function WidgetContent() {
       charIndex += step;
       if (charIndex >= totalChars) {
         if (typeTimerRef.current) clearInterval(typeTimerRef.current);
-        setMessages((prev) => {
-          const copy = [...prev];
-          if (copy[targetIndex]) copy[targetIndex].content = fullText;
-          return copy;
-        });
+        setMessages((prev) =>
+          prev.map((m) => (m.id === msgId ? { ...m, content: fullText } : m))
+        );
       } else {
         const slice = fullText.slice(0, charIndex);
-        setMessages((prev) => {
-          const copy = [...prev];
-          if (copy[targetIndex]) copy[targetIndex].content = slice;
-          return copy;
-        });
+        setMessages((prev) =>
+          prev.map((m) => (m.id === msgId ? { ...m, content: slice } : m))
+        );
       }
     }, 35);
   };
@@ -252,6 +246,9 @@ function WidgetContent() {
         const currentSpoken = inputText;
         setInputText('');
 
+        const userMsgId = Date.now().toString();
+        const assistantMsgId = (Date.now() + 1).toString();
+
         const formData = new FormData();
         formData.append('file', audioBlob, 'recording.webm');
         formData.append('visitorId', visitorId);
@@ -259,8 +256,8 @@ function WidgetContent() {
         try {
           setMessages(prev => [
             ...prev,
-            { sender: 'visitor', content: currentSpoken ? `🎙️ ${currentSpoken}` : '🎙️ Transcribing voice message...' },
-            { sender: 'assistant', content: '' },
+            { id: userMsgId, sender: 'visitor', content: currentSpoken ? `🎙️ ${currentSpoken}` : '🎙️ Transcribing voice message...' },
+            { id: assistantMsgId, sender: 'assistant', content: '' },
           ]);
 
           const res = await fetch(`${API_BASE}/voice/workspaces/${config.workspaceId}/process`, {
@@ -272,24 +269,19 @@ function WidgetContent() {
             throw new Error('Failed to process voice');
           }
 
-          const rawTranscribed = res.headers.get('X-Transcribed-Text');
-          const rawResponse = res.headers.get('X-Response-Text');
+          const rawTranscribed = res.headers.get('X-Transcribed-Text') || res.headers.get('x-transcribed-text');
+          const rawResponse = res.headers.get('X-Response-Text') || res.headers.get('x-response-text');
           const transcribedText = rawTranscribed ? decodeURIComponent(rawTranscribed) : (currentSpoken || 'Voice note');
-          const responseText = rawResponse ? decodeURIComponent(rawResponse) : '';
+          const responseText = rawResponse ? decodeURIComponent(rawResponse) : 'I processed your voice message.';
 
           const audioArrayBuffer = await res.arrayBuffer();
 
-          setMessages(prev => {
-            const copy = [...prev];
-            const userIndex = copy.length - 2;
-            if (copy[userIndex]) {
-              copy[userIndex].content = `🎙️ ${transcribedText}`;
-            }
-            return copy;
-          });
+          setMessages(prev =>
+            prev.map(m => m.id === userMsgId ? { ...m, content: `🎙️ ${transcribedText}` } : m)
+          );
 
           // Typewriter write response text
-          animateResponseText(messages.length + 1, responseText);
+          animateResponseText(assistantMsgId, responseText);
 
           if (audioArrayBuffer && audioArrayBuffer.byteLength > 200) {
             try {

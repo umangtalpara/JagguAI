@@ -306,10 +306,10 @@ export default function WidgetCustomizer() {
             throw new Error(`Voice endpoint responded with status ${res.status}`);
           }
 
-          const rawTranscribed = res.headers.get('X-Transcribed-Text');
-          const rawResponse = res.headers.get('X-Response-Text');
+          const rawTranscribed = res.headers.get('X-Transcribed-Text') || res.headers.get('x-transcribed-text');
+          const rawResponse = res.headers.get('X-Response-Text') || res.headers.get('x-response-text');
           const transcribedText = rawTranscribed ? decodeURIComponent(rawTranscribed) : (capturedSpokenInput || 'Voice message');
-          const responseText = rawResponse ? decodeURIComponent(rawResponse) : '';
+          const responseText = rawResponse ? decodeURIComponent(rawResponse) : 'I processed your voice message.';
 
           const audioBuffer = await res.arrayBuffer();
 

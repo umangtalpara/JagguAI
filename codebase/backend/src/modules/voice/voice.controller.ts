@@ -40,6 +40,7 @@ export class VoiceController {
       file.mimetype,
     );
 
+    res.setHeader('Access-Control-Expose-Headers', 'X-Transcribed-Text, X-Response-Text');
     res.setHeader('X-Transcribed-Text', encodeURIComponent(transcribedText));
     res.setHeader('X-Response-Text', encodeURIComponent(responseText));
     res.setHeader('Content-Type', 'audio/mpeg');
