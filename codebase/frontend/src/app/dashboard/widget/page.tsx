@@ -48,9 +48,16 @@ export default function WidgetCustomizer() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [isStreaming, setIsStreaming] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const [isPlayingAudio, setIsPlayingAudio] = useState(false);
+  const [voiceStatus, setVoiceStatus] = useState<string>('');
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const abortRef = useRef<(() => void) | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const currentAudioRef = useRef<HTMLAudioElement | null>(null);
 
   const fetchSettings = async () => {
     if (!currentWorkspace) return;
@@ -80,12 +87,197 @@ export default function WidgetCustomizer() {
   // Reset chat when workspace changes
   useEffect(() => {
     setMessages([]);
+    stopAudioPlayback();
   }, [currentWorkspace]);
+
+  // Cleanup audio on unmount
+  useEffect(() => {
+    return () => {
+      stopAudioPlayback();
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+        mediaRecorderRef.current.stop();
+      }
+    };
+  }, []);
 
   // Auto scroll
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  const stopAudioPlayback = () => {
+    if (currentAudioRef.current) {
+      currentAudioRef.current.pause();
+      currentAudioRef.current = null;
+    }
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+    }
+    setIsPlayingAudio(false);
+  };
+
+  const speakText = (text: string) => {
+    if (!text || typeof window === 'undefined') return;
+    stopAudioPlayback();
+    if ('speechSynthesis' in window) {
+      try {
+        const cleanText = text
+          .replace(/\*\*([^*]+)\*\*/g, '$1')
+          .replace(/\*([^*]+)\*/g, '$1')
+          .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+          .replace(/#{1,6}\s+/g, '')
+          .replace(/`{1,3}[^`]*`{1,3}/g, '')
+          .trim();
+        const utterance = new SpeechSynthesisUtterance(cleanText);
+        utterance.onstart = () => setIsPlayingAudio(true);
+        utterance.onend = () => setIsPlayingAudio(false);
+        utterance.onerror = () => setIsPlayingAudio(false);
+        window.speechSynthesis.speak(utterance);
+      } catch (err) {
+        console.error('Speech synthesis error:', err);
+        setIsPlayingAudio(false);
+      }
+    }
+  };
+
+  const playAudioBuffer = async (audioBuffer: ArrayBuffer, fallbackText: string) => {
+    try {
+      stopAudioPlayback();
+      if (audioBuffer && audioBuffer.byteLength > 200) {
+        const audioBlob = new Blob([audioBuffer], { type: 'audio/mpeg' });
+        const audioBlobUrl = URL.createObjectURL(audioBlob);
+        const audio = new Audio(audioBlobUrl);
+        currentAudioRef.current = audio;
+        setIsPlayingAudio(true);
+
+        audio.onended = () => {
+          setIsPlayingAudio(false);
+          URL.revokeObjectURL(audioBlobUrl);
+        };
+
+        audio.onerror = () => {
+          setIsPlayingAudio(false);
+          URL.revokeObjectURL(audioBlobUrl);
+          speakText(fallbackText);
+        };
+
+        await audio.play();
+      } else {
+        speakText(fallbackText);
+      }
+    } catch (err) {
+      console.warn('Audio tag playback failed, falling back to speech synthesis:', err);
+      speakText(fallbackText);
+    }
+  };
+
+  const startRecording = async () => {
+    if (!currentWorkspace || isStreaming || isRecording) return;
+    stopAudioPlayback();
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const options = typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported('audio/webm')
+        ? { mimeType: 'audio/webm' }
+        : typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported('audio/mp4')
+        ? { mimeType: 'audio/mp4' }
+        : undefined;
+
+      const mediaRecorder = new MediaRecorder(stream, options);
+      mediaRecorderRef.current = mediaRecorder;
+      audioChunksRef.current = [];
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data && event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+
+      mediaRecorder.onstop = async () => {
+        const mimeType = mediaRecorder.mimeType || 'audio/webm';
+        const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
+        stream.getTracks().forEach((track) => track.stop());
+
+        if (!currentWorkspace) return;
+
+        const tempUserMsgId = Date.now().toString();
+        const tempAssistantMsgId = (Date.now() + 1).toString();
+
+        setMessages((prev) => [
+          ...prev,
+          { id: tempUserMsgId, role: 'user', content: '🎙️ Processing voice note...' },
+          { id: tempAssistantMsgId, role: 'assistant', content: '', streaming: true },
+        ]);
+        setIsStreaming(true);
+        setVoiceStatus('Transcribing & generating voice reply...');
+
+        const formData = new FormData();
+        formData.append('file', audioBlob, 'recording.webm');
+        formData.append('visitorId', VISITOR_ID);
+
+        try {
+          const res = await fetch(`${API_BASE}/voice/workspaces/${currentWorkspace.id}/process`, {
+            method: 'POST',
+            body: formData,
+          });
+
+          if (!res.ok) {
+            throw new Error(`Voice endpoint responded with status ${res.status}`);
+          }
+
+          const rawTranscribed = res.headers.get('X-Transcribed-Text');
+          const rawResponse = res.headers.get('X-Response-Text');
+          const transcribedText = rawTranscribed ? decodeURIComponent(rawTranscribed) : '🎙️ Voice Message';
+          const responseText = rawResponse ? decodeURIComponent(rawResponse) : '';
+
+          const audioBuffer = await res.arrayBuffer();
+
+          setMessages((prev) =>
+            prev.map((m) => {
+              if (m.id === tempUserMsgId) return { ...m, content: `🎙️ ${transcribedText}` };
+              if (m.id === tempAssistantMsgId) return { ...m, content: responseText || 'Voice response received.', streaming: false };
+              return m;
+            })
+          );
+
+          setVoiceStatus('Playing audio response...');
+          await playAudioBuffer(audioBuffer, responseText);
+          setVoiceStatus('');
+        } catch (err) {
+          console.error('Voice processing error:', err);
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === tempAssistantMsgId
+                ? { ...m, content: 'Failed to process voice. Please check backend service and API keys.', streaming: false }
+                : m
+            )
+          );
+          setVoiceStatus('');
+        } finally {
+          setIsStreaming(false);
+        }
+      };
+
+      mediaRecorder.start();
+      setIsRecording(true);
+      setVoiceStatus('Listening... Click mic again to send');
+    } catch (err) {
+      console.error('Microphone error:', err);
+      setMessage({
+        text: 'Microphone access denied or not available. Please allow mic permission.',
+        type: 'error',
+      });
+      setIsRecording(false);
+      setVoiceStatus('');
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+      setVoiceStatus('Analyzing speech...');
+    }
+  };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -198,6 +390,12 @@ export default function WidgetCustomizer() {
 
   const clearChat = () => {
     if (abortRef.current) abortRef.current();
+    stopAudioPlayback();
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      mediaRecorderRef.current.stop();
+    }
+    setIsRecording(false);
+    setVoiceStatus('');
     setMessages([]);
     setIsStreaming(false);
   };
@@ -391,6 +589,12 @@ export default function WidgetCustomizer() {
                 <span className="text-xs font-bold text-white uppercase tracking-wide">AI Assistant</span>
               </div>
               <div className="flex items-center gap-2">
+                {isPlayingAudio && (
+                  <span className="text-[9px] text-white/90 bg-white/20 px-2 py-0.5 rounded-full font-medium flex items-center gap-1 animate-pulse">
+                    <span className="h-1.5 w-1.5 rounded-full bg-white animate-ping" />
+                    Speaking
+                  </span>
+                )}
                 <span className="text-[9px] text-white/70 bg-white/10 px-2 py-0.5 rounded-full font-medium">TEST MODE</span>
               </div>
             </div>
@@ -405,10 +609,22 @@ export default function WidgetCustomizer() {
                   ) : (
                     <div className="h-6 w-6 rounded-full flex-shrink-0 flex items-center justify-center text-[9px] font-bold text-white" style={{ backgroundColor: settings.primaryColor }}>AI</div>
                   )}
-                  <div className={`max-w-[78%] p-3 rounded-2xl rounded-bl-none text-xs leading-relaxed border ${
+                  <div className={`group relative max-w-[78%] p-3 rounded-2xl rounded-bl-none text-xs leading-relaxed border ${
                     isDark ? 'bg-white/5 border-white/5 text-white' : 'bg-white border-slate-200 text-slate-800'
                   }`}>
                     {settings.greeting}
+                    {settings.voiceEnabled && (
+                      <button
+                        type="button"
+                        onClick={() => speakText(settings.greeting)}
+                        className="ml-2 inline-flex items-center text-muted-foreground hover:text-primary transition-colors opacity-70 group-hover:opacity-100"
+                        title="Listen to message"
+                      >
+                        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072M18.364 5.636a9 9 0 010 12.728M6 10H4a1 1 0 00-1 1v2a1 1 0 001 1h2l3.5 3.5A1 1 0 0011 17V7a1 1 0 00-1.5-.86L6 10z" />
+                        </svg>
+                      </button>
+                    )}
                   </div>
                 </div>
               )}
@@ -420,7 +636,7 @@ export default function WidgetCustomizer() {
                     <button
                       key={idx}
                       onClick={() => sendMessage(q)}
-                      disabled={isStreaming}
+                      disabled={isStreaming || isRecording}
                       className={`block w-full text-left px-3 py-1.5 border rounded-xl text-[10px] truncate transition-colors ${
                         isDark
                           ? 'bg-white/5 hover:bg-white/10 border-white/5 text-slate-300 disabled:opacity-50'
@@ -443,7 +659,7 @@ export default function WidgetCustomizer() {
                       <div className="h-6 w-6 rounded-full flex-shrink-0 flex items-center justify-center text-[9px] font-bold text-white" style={{ backgroundColor: settings.primaryColor }}>AI</div>
                     )
                   )}
-                  <div className={`max-w-[78%] px-3 py-2.5 rounded-2xl text-xs leading-relaxed border ${
+                  <div className={`group relative max-w-[78%] px-3 py-2.5 rounded-2xl text-xs leading-relaxed border ${
                     msg.role === 'user'
                       ? 'text-white rounded-br-none border-transparent'
                       : isDark
@@ -460,11 +676,48 @@ export default function WidgetCustomizer() {
                     {msg.streaming && msg.content && (
                       <span className="inline-block w-0.5 h-3 bg-current ml-0.5 animate-pulse align-middle" />
                     )}
+
+                    {/* Speaker button on assistant message */}
+                    {msg.role === 'assistant' && msg.content && !msg.streaming && settings.voiceEnabled && (
+                      <button
+                        type="button"
+                        onClick={() => speakText(msg.content)}
+                        className="ml-2 inline-flex items-center text-muted-foreground hover:text-primary transition-colors opacity-60 group-hover:opacity-100 align-middle"
+                        title="Replay voice audio"
+                      >
+                        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072M18.364 5.636a9 9 0 010 12.728M6 10H4a1 1 0 00-1 1v2a1 1 0 001 1h2l3.5 3.5A1 1 0 0011 17V7a1 1 0 00-1.5-.86L6 10z" />
+                        </svg>
+                      </button>
+                    )}
                   </div>
                 </div>
               ))}
               <div ref={messagesEndRef} />
             </div>
+
+            {/* Voice status banner */}
+            {(isRecording || voiceStatus) && (
+              <div className={`px-4 py-1.5 text-[10px] font-medium flex items-center justify-between border-t transition-all ${
+                isRecording
+                  ? 'bg-rose-500/10 border-rose-500/20 text-rose-400'
+                  : 'bg-primary/10 border-primary/20 text-primary'
+              }`}>
+                <div className="flex items-center gap-2">
+                  <span className={`h-2 w-2 rounded-full ${isRecording ? 'bg-rose-500 animate-ping' : 'bg-primary animate-pulse'}`} />
+                  <span>{isRecording ? 'Recording audio... Speak your question' : voiceStatus}</span>
+                </div>
+                {isRecording && (
+                  <button
+                    type="button"
+                    onClick={stopRecording}
+                    className="underline text-[10px] hover:text-white font-semibold"
+                  >
+                    Done (Send)
+                  </button>
+                )}
+              </div>
+            )}
 
             {/* Input area */}
             <div className={`p-3 border-t flex gap-2 flex-shrink-0 ${isDark ? 'border-white/5 bg-slate-950/80' : 'border-slate-200 bg-white'}`}>
@@ -474,8 +727,14 @@ export default function WidgetCustomizer() {
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
                 onKeyDown={handleKeyDown}
-                disabled={isStreaming || !currentWorkspace}
-                placeholder={currentWorkspace ? 'Ask me anything...' : 'Select a workspace first'}
+                disabled={isStreaming || isRecording || !currentWorkspace}
+                placeholder={
+                  isRecording
+                    ? 'Recording voice...'
+                    : currentWorkspace
+                    ? 'Ask me anything...'
+                    : 'Select a workspace first'
+                }
                 className={`flex-1 rounded-xl px-3 py-2 text-xs focus:outline-none transition-colors ${
                   isDark
                     ? 'bg-white/5 border border-white/5 text-white placeholder-slate-500 focus:border-white/20'
@@ -485,11 +744,16 @@ export default function WidgetCustomizer() {
               {settings.voiceEnabled && (
                 <button
                   type="button"
-                  disabled
+                  onClick={isRecording ? stopRecording : startRecording}
+                  disabled={isStreaming || !currentWorkspace}
                   className={`p-2 rounded-xl flex items-center justify-center border transition-all ${
-                    isDark ? 'border-white/10 bg-white/5 text-slate-300' : 'border-slate-200 bg-slate-100 text-slate-500'
-                  }`}
-                  title="Voice mode (not active in preview)"
+                    isRecording
+                      ? 'bg-rose-500 text-white border-rose-500 animate-pulse ring-2 ring-rose-500/40'
+                      : isDark
+                        ? 'border-white/10 bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white'
+                        : 'border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  } disabled:opacity-40`}
+                  title={isRecording ? 'Stop recording and send audio' : 'Speak to AI Bot'}
                 >
                   <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
@@ -499,7 +763,7 @@ export default function WidgetCustomizer() {
               <button
                 type="button"
                 onClick={() => sendMessage(inputValue)}
-                disabled={isStreaming || !inputValue.trim() || !currentWorkspace}
+                disabled={isStreaming || isRecording || !inputValue.trim() || !currentWorkspace}
                 className="p-2 rounded-xl flex items-center justify-center text-white transition-opacity disabled:opacity-40"
                 style={{ backgroundColor: settings.primaryColor }}
               >
@@ -519,7 +783,7 @@ export default function WidgetCustomizer() {
 
           {/* Helper tip */}
           <p className="text-[10px] text-muted-foreground text-center">
-            💡 This tester uses your live knowledge base. Make sure documents are indexed before testing.
+            💡 Voice enabled: Click the microphone to speak and hear the bot respond in voice audio.
           </p>
         </div>
       </div>

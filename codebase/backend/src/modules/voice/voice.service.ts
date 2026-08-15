@@ -40,16 +40,28 @@ export class VoiceService {
     if (transcribedText.trim().length > 0) {
       const stream = this.chatService.streamResponse(workspaceId, visitorId, transcribedText);
       for await (const chunk of stream) {
+        if (chunk.startsWith('[METADATA]:')) {
+          continue;
+        }
         responseText += chunk;
       }
     } else {
       responseText = "I'm sorry, I could not hear anything. Could you please repeat that?";
     }
 
+    // Clean markdown formatting so TTS sounds natural and doesn't vocalize symbols
+    const cleanTtsText = responseText
+      .replace(/\*\*([^*]+)\*\*/g, '$1')
+      .replace(/\*([^*]+)\*/g, '$1')
+      .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+      .replace(/#{1,6}\s+/g, '')
+      .replace(/`{1,3}[^`]*`{1,3}/g, '')
+      .trim();
+
     const hasDeepgram = !!this.configService.get<string>('DEEPGRAM_API_KEY');
     const responseAudio = hasDeepgram
-      ? await this.deepgramTtsService.textToSpeech(responseText)
-      : await this.kokoroService.textToSpeech(responseText);
+      ? await this.deepgramTtsService.textToSpeech(cleanTtsText || responseText)
+      : await this.kokoroService.textToSpeech(cleanTtsText || responseText);
 
     return {
       transcribedText,

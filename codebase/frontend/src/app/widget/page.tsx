@@ -132,21 +132,48 @@ function WidgetContent() {
     }
   };
 
+  const speakText = (text: string) => {
+    if (!text || typeof window === 'undefined') return;
+    if ('speechSynthesis' in window) {
+      try {
+        window.speechSynthesis.cancel();
+        const cleanText = text
+          .replace(/\*\*([^*]+)\*\*/g, '$1')
+          .replace(/\*([^*]+)\*/g, '$1')
+          .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+          .replace(/#{1,6}\s+/g, '')
+          .replace(/`{1,3}[^`]*`{1,3}/g, '')
+          .trim();
+        const utterance = new SpeechSynthesisUtterance(cleanText);
+        window.speechSynthesis.speak(utterance);
+      } catch (err) {
+        console.error('Speech synthesis error:', err);
+      }
+    }
+  };
+
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+      const options = typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported('audio/webm')
+        ? { mimeType: 'audio/webm' }
+        : typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported('audio/mp4')
+        ? { mimeType: 'audio/mp4' }
+        : undefined;
+
+      const mediaRecorder = new MediaRecorder(stream, options);
       mediaRecorderRef.current = mediaRecorder;
       audioChunksRef.current = [];
 
       mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
+        if (event.data && event.data.size > 0) {
           audioChunksRef.current.push(event.data);
         }
       };
 
       mediaRecorder.onstop = async () => {
-        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        const mimeType = mediaRecorder.mimeType || 'audio/webm';
+        const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
         if (!config) return;
         setStreaming(true);
 
@@ -166,13 +193,12 @@ function WidgetContent() {
             throw new Error('Failed to process voice');
           }
 
-          const transcribedText = decodeURIComponent(res.headers.get('X-Transcribed-Text') || '');
-          const responseText = decodeURIComponent(res.headers.get('X-Response-Text') || '');
+          const rawTranscribed = res.headers.get('X-Transcribed-Text');
+          const rawResponse = res.headers.get('X-Response-Text');
+          const transcribedText = rawTranscribed ? decodeURIComponent(rawTranscribed) : 'Voice note';
+          const responseText = rawResponse ? decodeURIComponent(rawResponse) : '';
 
           const audioArrayBuffer = await res.arrayBuffer();
-          const audioBlobUrl = URL.createObjectURL(new Blob([audioArrayBuffer], { type: 'audio/mpeg' }));
-          const audioPlayer = new Audio(audioBlobUrl);
-          audioPlayer.play();
 
           setMessages(prev => {
             const copy = [...prev];
@@ -182,6 +208,19 @@ function WidgetContent() {
             }
             return [...copy, { sender: 'assistant', content: responseText }];
           });
+
+          if (audioArrayBuffer && audioArrayBuffer.byteLength > 200) {
+            try {
+              const audioBlobUrl = URL.createObjectURL(new Blob([audioArrayBuffer], { type: 'audio/mpeg' }));
+              const audioPlayer = new Audio(audioBlobUrl);
+              audioPlayer.onerror = () => speakText(responseText);
+              await audioPlayer.play();
+            } catch {
+              speakText(responseText);
+            }
+          } else if (responseText) {
+            speakText(responseText);
+          }
 
         } catch (err) {
           console.error(err);
