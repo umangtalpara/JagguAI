@@ -132,6 +132,9 @@ function WidgetContent() {
     }
   };
 
+  const recognitionRef = useRef<any>(null);
+  const typeTimerRef = useRef<NodeJS.Timeout | null>(null);
+
   const speakText = (text: string) => {
     if (!text || typeof window === 'undefined') return;
     if ('speechSynthesis' in window) {
@@ -152,7 +155,71 @@ function WidgetContent() {
     }
   };
 
+  const animateResponseText = (targetIndex: number, fullText: string) => {
+    if (typeTimerRef.current) clearInterval(typeTimerRef.current);
+    if (!fullText) {
+      setMessages((prev) => {
+        const copy = [...prev];
+        if (copy[targetIndex]) copy[targetIndex].content = '';
+        return copy;
+      });
+      return;
+    }
+
+    let charIndex = 0;
+    const totalChars = fullText.length;
+    const step = Math.max(1, Math.ceil(totalChars / 35));
+
+    typeTimerRef.current = setInterval(() => {
+      charIndex += step;
+      if (charIndex >= totalChars) {
+        if (typeTimerRef.current) clearInterval(typeTimerRef.current);
+        setMessages((prev) => {
+          const copy = [...prev];
+          if (copy[targetIndex]) copy[targetIndex].content = fullText;
+          return copy;
+        });
+      } else {
+        const slice = fullText.slice(0, charIndex);
+        setMessages((prev) => {
+          const copy = [...prev];
+          if (copy[targetIndex]) copy[targetIndex].content = slice;
+          return copy;
+        });
+      }
+    }, 35);
+  };
+
   const startRecording = async () => {
+    setInputText('');
+
+    if (typeof window !== 'undefined') {
+      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+      if (SpeechRecognition) {
+        try {
+          const recognition = new SpeechRecognition();
+          recognition.continuous = true;
+          recognition.interimResults = true;
+          recognition.lang = 'en-US';
+
+          recognition.onresult = (event: any) => {
+            let liveTranscript = '';
+            for (let i = 0; i < event.results.length; i++) {
+              liveTranscript += event.results[i][0].transcript;
+            }
+            if (liveTranscript) {
+              setInputText(liveTranscript);
+            }
+          };
+
+          recognition.start();
+          recognitionRef.current = recognition;
+        } catch (e) {
+          console.warn('Speech recognition error:', e);
+        }
+      }
+    }
+
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const options = typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported('audio/webm')
@@ -172,17 +239,29 @@ function WidgetContent() {
       };
 
       mediaRecorder.onstop = async () => {
+        if (recognitionRef.current) {
+          try { recognitionRef.current.stop(); } catch {}
+          recognitionRef.current = null;
+        }
+
         const mimeType = mediaRecorder.mimeType || 'audio/webm';
         const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
         if (!config) return;
         setStreaming(true);
+
+        const currentSpoken = inputText;
+        setInputText('');
 
         const formData = new FormData();
         formData.append('file', audioBlob, 'recording.webm');
         formData.append('visitorId', visitorId);
 
         try {
-          setMessages(prev => [...prev, { sender: 'visitor', content: '🎙️ Transcribing voice message...' }]);
+          setMessages(prev => [
+            ...prev,
+            { sender: 'visitor', content: currentSpoken ? `🎙️ ${currentSpoken}` : '🎙️ Transcribing voice message...' },
+            { sender: 'assistant', content: '' },
+          ]);
 
           const res = await fetch(`${API_BASE}/voice/workspaces/${config.workspaceId}/process`, {
             method: 'POST',
@@ -195,19 +274,22 @@ function WidgetContent() {
 
           const rawTranscribed = res.headers.get('X-Transcribed-Text');
           const rawResponse = res.headers.get('X-Response-Text');
-          const transcribedText = rawTranscribed ? decodeURIComponent(rawTranscribed) : 'Voice note';
+          const transcribedText = rawTranscribed ? decodeURIComponent(rawTranscribed) : (currentSpoken || 'Voice note');
           const responseText = rawResponse ? decodeURIComponent(rawResponse) : '';
 
           const audioArrayBuffer = await res.arrayBuffer();
 
           setMessages(prev => {
             const copy = [...prev];
-            const lastIndex = copy.length - 1;
-            if (copy[lastIndex]) {
-              copy[lastIndex].content = `🎙️ ${transcribedText}`;
+            const userIndex = copy.length - 2;
+            if (copy[userIndex]) {
+              copy[userIndex].content = `🎙️ ${transcribedText}`;
             }
-            return [...copy, { sender: 'assistant', content: responseText }];
+            return copy;
           });
+
+          // Typewriter write response text
+          animateResponseText(messages.length + 1, responseText);
 
           if (audioArrayBuffer && audioArrayBuffer.byteLength > 200) {
             try {
@@ -236,10 +318,16 @@ function WidgetContent() {
       setRecording(true);
     } catch (err) {
       console.error('Failed to start voice recording:', err);
+      if (recognitionRef.current) {
+        try { recognitionRef.current.stop(); } catch {}
+      }
     }
   };
 
   const stopRecording = () => {
+    if (recognitionRef.current) {
+      try { recognitionRef.current.stop(); } catch {}
+    }
     if (mediaRecorderRef.current && recording) {
       mediaRecorderRef.current.stop();
       setRecording(false);

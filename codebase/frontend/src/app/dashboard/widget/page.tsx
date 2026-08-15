@@ -58,6 +58,8 @@ export default function WidgetCustomizer() {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const currentAudioRef = useRef<HTMLAudioElement | null>(null);
+  const recognitionRef = useRef<any>(null);
+  const typeTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const fetchSettings = async () => {
     if (!currentWorkspace) return;
@@ -90,10 +92,14 @@ export default function WidgetCustomizer() {
     stopAudioPlayback();
   }, [currentWorkspace]);
 
-  // Cleanup audio on unmount
+  // Cleanup audio & timers on unmount
   useEffect(() => {
     return () => {
       stopAudioPlayback();
+      if (typeTimerRef.current) clearInterval(typeTimerRef.current);
+      if (recognitionRef.current) {
+        try { recognitionRef.current.stop(); } catch {}
+      }
       if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
         mediaRecorderRef.current.stop();
       }
@@ -140,6 +146,40 @@ export default function WidgetCustomizer() {
     }
   };
 
+  // Animate writing the response text in the chat bubble
+  const animateResponseText = (msgId: string, fullText: string, onComplete?: () => void) => {
+    if (typeTimerRef.current) clearInterval(typeTimerRef.current);
+    if (!fullText) {
+      setMessages((prev) =>
+        prev.map((m) => (m.id === msgId ? { ...m, content: '', streaming: false } : m))
+      );
+      if (onComplete) onComplete();
+      return;
+    }
+
+    let charIndex = 0;
+    const totalChars = fullText.length;
+    // Step size and interval to finish smoothly within 1.5 - 3 seconds
+    const step = Math.max(1, Math.ceil(totalChars / 40));
+    const intervalMs = 35;
+
+    typeTimerRef.current = setInterval(() => {
+      charIndex += step;
+      if (charIndex >= totalChars) {
+        if (typeTimerRef.current) clearInterval(typeTimerRef.current);
+        setMessages((prev) =>
+          prev.map((m) => (m.id === msgId ? { ...m, content: fullText, streaming: false } : m))
+        );
+        if (onComplete) onComplete();
+      } else {
+        const currentSlice = fullText.slice(0, charIndex);
+        setMessages((prev) =>
+          prev.map((m) => (m.id === msgId ? { ...m, content: currentSlice, streaming: true } : m))
+        );
+      }
+    }, intervalMs);
+  };
+
   const playAudioBuffer = async (audioBuffer: ArrayBuffer, fallbackText: string) => {
     try {
       stopAudioPlayback();
@@ -174,6 +214,40 @@ export default function WidgetCustomizer() {
   const startRecording = async () => {
     if (!currentWorkspace || isStreaming || isRecording) return;
     stopAudioPlayback();
+    setInputValue('');
+
+    // Start live browser speech recognition to write user words into chat input in real time
+    if (typeof window !== 'undefined') {
+      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+      if (SpeechRecognition) {
+        try {
+          const recognition = new SpeechRecognition();
+          recognition.continuous = true;
+          recognition.interimResults = true;
+          recognition.lang = 'en-US';
+
+          recognition.onresult = (event: any) => {
+            let liveTranscript = '';
+            for (let i = 0; i < event.results.length; i++) {
+              liveTranscript += event.results[i][0].transcript;
+            }
+            if (liveTranscript) {
+              setInputValue(liveTranscript);
+            }
+          };
+
+          recognition.onerror = (e: any) => {
+            console.warn('Speech recognition warning:', e);
+          };
+
+          recognition.start();
+          recognitionRef.current = recognition;
+        } catch (e) {
+          console.warn('Speech recognition start failed:', e);
+        }
+      }
+    }
+
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const options = typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported('audio/webm')
@@ -193,20 +267,28 @@ export default function WidgetCustomizer() {
       };
 
       mediaRecorder.onstop = async () => {
+        if (recognitionRef.current) {
+          try { recognitionRef.current.stop(); } catch {}
+          recognitionRef.current = null;
+        }
+
         const mimeType = mediaRecorder.mimeType || 'audio/webm';
         const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
         stream.getTracks().forEach((track) => track.stop());
 
         if (!currentWorkspace) return;
 
+        const capturedSpokenInput = inputRef.current?.value || '';
         const tempUserMsgId = Date.now().toString();
         const tempAssistantMsgId = (Date.now() + 1).toString();
 
+        // Show user message with live transcribed text or placeholder
         setMessages((prev) => [
           ...prev,
-          { id: tempUserMsgId, role: 'user', content: '🎙️ Processing voice note...' },
+          { id: tempUserMsgId, role: 'user', content: capturedSpokenInput ? `🎙️ ${capturedSpokenInput}` : '🎙️ Processing voice note...' },
           { id: tempAssistantMsgId, role: 'assistant', content: '', streaming: true },
         ]);
+        setInputValue('');
         setIsStreaming(true);
         setVoiceStatus('Transcribing & generating voice reply...');
 
@@ -226,22 +308,24 @@ export default function WidgetCustomizer() {
 
           const rawTranscribed = res.headers.get('X-Transcribed-Text');
           const rawResponse = res.headers.get('X-Response-Text');
-          const transcribedText = rawTranscribed ? decodeURIComponent(rawTranscribed) : '🎙️ Voice Message';
+          const transcribedText = rawTranscribed ? decodeURIComponent(rawTranscribed) : (capturedSpokenInput || 'Voice message');
           const responseText = rawResponse ? decodeURIComponent(rawResponse) : '';
 
           const audioBuffer = await res.arrayBuffer();
 
+          // Update user message with precise server transcription
           setMessages((prev) =>
-            prev.map((m) => {
-              if (m.id === tempUserMsgId) return { ...m, content: `🎙️ ${transcribedText}` };
-              if (m.id === tempAssistantMsgId) return { ...m, content: responseText || 'Voice response received.', streaming: false };
-              return m;
-            })
+            prev.map((m) => (m.id === tempUserMsgId ? { ...m, content: `🎙️ ${transcribedText}` } : m))
           );
 
-          setVoiceStatus('Playing audio response...');
+          setVoiceStatus('Speaking response...');
+
+          // Simultaneously write bot response text in chat and play voice audio
+          animateResponseText(tempAssistantMsgId, responseText, () => {
+            setVoiceStatus('');
+          });
+
           await playAudioBuffer(audioBuffer, responseText);
-          setVoiceStatus('');
         } catch (err) {
           console.error('Voice processing error:', err);
           setMessages((prev) =>
@@ -259,9 +343,13 @@ export default function WidgetCustomizer() {
 
       mediaRecorder.start();
       setIsRecording(true);
-      setVoiceStatus('Listening... Click mic again to send');
+      setVoiceStatus('Listening... Speak and your words will appear below');
     } catch (err) {
       console.error('Microphone error:', err);
+      if (recognitionRef.current) {
+        try { recognitionRef.current.stop(); } catch {}
+        recognitionRef.current = null;
+      }
       setMessage({
         text: 'Microphone access denied or not available. Please allow mic permission.',
         type: 'error',
@@ -272,6 +360,9 @@ export default function WidgetCustomizer() {
   };
 
   const stopRecording = () => {
+    if (recognitionRef.current) {
+      try { recognitionRef.current.stop(); } catch {}
+    }
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
       mediaRecorderRef.current.stop();
       setIsRecording(false);
