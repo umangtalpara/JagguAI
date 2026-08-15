@@ -7,6 +7,13 @@ const font = Outfit({ subsets: ['latin'] });
 export const metadata: Metadata = {
   title: 'jagguAI - Enterprise SaaS AI Agent Platform',
   description: 'Instant customer support chatbots trained on your product docs and crawled website pages.',
+  icons: {
+    icon: [
+      { url: '/icon.svg', type: 'image/svg+xml' },
+    ],
+    shortcut: '/icon.svg',
+    apple: '/icon.svg',
+  },
 };
 
 export default function RootLayout({
