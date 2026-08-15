@@ -17,6 +17,8 @@ interface AuthState {
   accessToken: string | null;
   currentWorkspace: Workspace | null;
   workspaces: Workspace[];
+  _hasHydrated: boolean;
+  setHasHydrated: (state: boolean) => void;
   setAuth: (user: User, token: string) => void;
   clearAuth: () => void;
   setWorkspaces: (workspaces: Workspace[]) => void;
@@ -30,6 +32,8 @@ export const useAuthStore = create<AuthState>()(
       accessToken: null,
       currentWorkspace: null,
       workspaces: [],
+      _hasHydrated: false,
+      setHasHydrated: (state) => set({ _hasHydrated: state }),
       setAuth: (user, token) => set({ user, accessToken: token }),
       clearAuth: () => set({ user: null, accessToken: null, currentWorkspace: null, workspaces: [] }),
       setWorkspaces: (workspaces) => set({ workspaces }),
@@ -37,6 +41,9 @@ export const useAuthStore = create<AuthState>()(
     }),
     {
       name: 'jagu-auth-storage',
+      onRehydrateStorage: () => (state) => {
+        state?.setHasHydrated(true);
+      },
     },
   ),
 );

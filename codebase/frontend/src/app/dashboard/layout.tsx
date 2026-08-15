@@ -19,13 +19,18 @@ export default function DashboardLayout({
 }) {
   const router = useRouter();
   const pathname = usePathname();
-  const { user, accessToken, workspaces, currentWorkspace, clearAuth, setWorkspaces, setCurrentWorkspace } = useAuthStore();
+  const { user, accessToken, workspaces, currentWorkspace, clearAuth, setWorkspaces, setCurrentWorkspace, _hasHydrated } = useAuthStore();
   const [showWorkspaceModal, setShowWorkspaceModal] = useState(false);
   const [newWorkspaceName, setNewWorkspaceName] = useState('');
   const [loading, setLoading] = useState(false);
   const [syncingWorkspaces, setSyncingWorkspaces] = useState(true);
 
   useEffect(() => {
+    // Wait until Zustand has finished rehydrating state from localStorage
+    if (!_hasHydrated) {
+      return;
+    }
+
     if (!accessToken) {
       router.push('/');
       return;
@@ -51,7 +56,12 @@ export default function DashboardLayout({
     };
 
     fetchAndSyncWorkspaces();
-  }, [accessToken, router, setWorkspaces, setCurrentWorkspace]);
+  }, [_hasHydrated, accessToken, router, setWorkspaces, setCurrentWorkspace]);
+
+  // Show page loader while zustand rehydrates or while token is being verified
+  if (!_hasHydrated) {
+    return <PageLoader text="Loading your session..." />;
+  }
 
   if (!accessToken) {
     return null;
