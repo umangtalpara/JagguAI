@@ -39,40 +39,27 @@ export class OpenaiLlmService {
         : `${this.baseUrl}/chat/completions`;
       this.logger.log(`→ POST ${completionsUrl} | model: ${this.model} | messages: ${messages.length}`);
       const t = Date.now();
+      const payload: Record<string, unknown> = {
+        model: this.model,
+        messages,
+        stream: true,
+        temperature: 0.2,
+        max_tokens: 300,
+        stop: [
+          "$$",
+          "\nUser:",
+          "\nHuman:",
+          "\nAssistant:"
+        ],
+      };
+
       const response = await fetch(completionsUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${this.apiKey}`,
-          'x-rotation-strategy': 'priority',
         },
-        body: JSON.stringify({
-          model: this.model,
-          messages,
-          stream: true,
-          temperature: 0.2,
-          // Disable Qwen3 chain-of-thought thinking mode for LM Studio & llama.cpp
-          enable_thinking: false,
-          chat_template_kwargs: { enable_thinking: false },
-          // Cap response length to keep answers concise for a chat widget
-          max_tokens: 300,
-          // Stop sequences to prevent model from hallucinating dialog transcripts or repetition
-          stop: [
-            "$$",
-            "\n$$",
-            "The answer is in the CONTEXT",
-            "The answer is in",
-            "\nAnswer:",
-            "\n\nAnswer:",
-            "Assistant's response:",
-            "\nAssistant's response:",
-            "\nAssistant:",
-            "\nUser:",
-            "\nHuman:",
-            "<|im_end|>",
-            "<|endoftext|>"
-          ],
-        }),
+        body: JSON.stringify(payload),
       });
 
       if (!response.ok) {
