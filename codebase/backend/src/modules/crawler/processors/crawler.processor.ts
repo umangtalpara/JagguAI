@@ -27,10 +27,10 @@ export class CrawlerProcessor extends WorkerHost {
   }
 
   async process(job: Job<CrawlerJobData>): Promise<void> {
-    const { workspaceId, seedUrl, maxPages = 30 } = job.data;
-    
+    const { workspaceId, seedUrl, maxPages = 10 } = job.data;
+
     console.log(`Starting crawl of ${seedUrl} for workspace ${workspaceId}`);
-    
+
     const parsedUrl = new URL(seedUrl);
     const origin = parsedUrl.origin;
 
@@ -52,7 +52,7 @@ export class CrawlerProcessor extends WorkerHost {
                 if (uObj.origin === origin && !visited.has(u)) {
                   queue.push({ url: u, depth: 0 });
                 }
-              } catch {}
+              } catch { }
             }
           }
         }
@@ -146,13 +146,13 @@ export class CrawlerProcessor extends WorkerHost {
           // Check if page already indexed under this workspace (Incremental Ingestion)
           const existingFile = await this.knowledgeRepository.getFileByUrl(workspaceId, url);
           let fileDocId = '';
-          
+
           if (existingFile) {
             fileDocId = String(existingFile._id || '');
             // Delete old vectors and chunks
             await this.qdrantService.deleteFilePoints(workspaceId, fileDocId);
             await this.knowledgeRepository.deleteChunksByFile(fileDocId);
-            
+
             await this.knowledgeRepository.updateFileById(fileDocId, {
               status: KnowledgeProcessingStatus.PROCESSING,
               name: title,
@@ -227,7 +227,7 @@ export class CrawlerProcessor extends WorkerHost {
           try {
             const absoluteUrl = new URL(href, url).toString();
             const cleanUrl = absoluteUrl.split('#')[0] || '';
-            
+
             if (cleanUrl.startsWith(origin) && !visited.has(cleanUrl)) {
               queue.push({ url: cleanUrl, depth: depth + 1 });
             }

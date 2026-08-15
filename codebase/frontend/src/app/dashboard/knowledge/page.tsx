@@ -22,12 +22,12 @@ export default function KnowledgeBase() {
   const { currentWorkspace } = useAuthStore();
   const [files, setFiles] = useState<KnowledgeFile[]>([]);
   const [activeTab, setActiveTab] = useState<'upload' | 'crawl' | 'faq'>('upload');
-  
+
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
 
   const [crawlUrl, setCrawlUrl] = useState('');
-  const [maxPages, setMaxPages] = useState(30);
+  const [maxPages, setMaxPages] = useState(10);
   const [crawling, setCrawling] = useState(false);
 
   const [question, setQuestion] = useState('');
@@ -243,11 +243,10 @@ export default function KnowledgeBase() {
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
-                className={`flex-1 pb-3 text-xs font-semibold capitalize border-b-2 transition-all ${
-                  activeTab === tab
+                className={`flex-1 pb-3 text-xs font-semibold capitalize border-b-2 transition-all ${activeTab === tab
                     ? 'border-primary text-primary'
                     : 'border-transparent text-muted-foreground hover:text-white'
-                }`}
+                  }`}
               >
                 {tab === 'crawl' ? 'Crawler' : tab === 'faq' ? 'FAQs' : 'File Upload'}
               </button>
@@ -430,15 +429,14 @@ export default function KnowledgeBase() {
                   </div>
 
                   <div className="flex items-center gap-2">
-                    <span className={`text-[9px] px-2 py-0.5 rounded-full font-semibold ${
-                      file.status === 'completed'
+                    <span className={`text-[9px] px-2 py-0.5 rounded-full font-semibold ${file.status === 'completed'
                         ? 'bg-green-500/10 text-green-400'
                         : file.status === 'processing'
-                        ? 'bg-yellow-500/10 text-yellow-400 animate-pulse'
-                        : file.status === 'failed'
-                        ? 'bg-red-500/10 text-red-400'
-                        : 'bg-white/10 text-muted-foreground'
-                    }`}>
+                          ? 'bg-yellow-500/10 text-yellow-400 animate-pulse'
+                          : file.status === 'failed'
+                            ? 'bg-red-500/10 text-red-400'
+                            : 'bg-white/10 text-muted-foreground'
+                      }`}>
                       {file.status}
                     </span>
 
