@@ -17,9 +17,10 @@ import { WidgetModule } from './modules/widget/widget.module';
 import { VoiceModule } from './modules/voice/voice.module';
 import { AnalyticsModule } from './modules/analytics/analytics.module';
 import { AuditLogsModule } from './modules/audit-logs/audit-logs.module';
-import { HealthModule } from './modules/health/health.module';
+import { AppController } from './app.controller';
 
 @Module({
+  controllers: [AppController],
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
@@ -79,7 +80,6 @@ import { HealthModule } from './modules/health/health.module';
     VoiceModule,
     AnalyticsModule,
     AuditLogsModule,
-    HealthModule,
   ],
 })
 export class AppModule {}
