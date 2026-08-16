@@ -132,7 +132,8 @@ export default function DashboardOverview() {
   };
 
   const activeApiKey = keys[0]?.apiKey || keys[0]?.keyPlain || keys[0]?.keyMasked || keys[0]?.keyMask || 'YOUR_API_KEY';
-  const embedCode = `<script src="http://localhost:3001/api/v1/widget/script.js" data-api-key="${activeApiKey}" defer></script>`;
+  const apiBase = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1').replace(/\/$/, '');
+  const embedCode = `<script src="${apiBase}/widget/script.js" data-api-key="${activeApiKey}" defer></script>`;
 
   return (
     <div className="space-y-6 sm:space-y-8">

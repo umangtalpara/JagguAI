@@ -63,7 +63,8 @@ export default function HelpIntegrationPage() {
   };
 
   const activeKey = selectedKey || 'YOUR_API_KEY';
-  const scriptUrl = 'http://localhost:3001/api/v1/widget/script.js';
+  const apiBase = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1').replace(/\/$/, '');
+  const scriptUrl = `${apiBase}/widget/script.js`;
 
   const copyToClipboard = (text: string, id: string) => {
     navigator.clipboard.writeText(text);
