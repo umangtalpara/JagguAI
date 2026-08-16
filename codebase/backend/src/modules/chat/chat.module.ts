@@ -9,6 +9,7 @@ import { EmbeddingsModule } from '../embeddings/embeddings.module';
 import { QdrantModule } from '../qdrant/qdrant.module';
 import { OpenaiLlmModule } from '../openai-llm/openai-llm.module';
 import { AnalyticsModule } from '../analytics/analytics.module';
+import { WorkspacesModule } from '../workspaces/workspaces.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { AnalyticsModule } from '../analytics/analytics.module';
     QdrantModule,
     OpenaiLlmModule,
     AnalyticsModule,
+    WorkspacesModule,
   ],
   controllers: [ChatController],
   providers: [ChatService, ChatRepository],
