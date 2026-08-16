@@ -5,6 +5,7 @@ import { useAuthStore } from '../../stores/auth-store';
 import { apiRequest } from '../../lib/api';
 import { Notification } from '../../components/ui/Notification';
 import { Spinner, CardSkeleton } from '../../components/ui/Loader';
+import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 
 interface ApiKeyResponse {
   id: string;
@@ -47,6 +48,8 @@ export default function DashboardOverview() {
   const [error, setError] = useState('');
   const [copiedKeyId, setCopiedKeyId] = useState<string | null>(null);
   const [copiedEmbed, setCopiedEmbed] = useState(false);
+  const [deletingKey, setDeletingKey] = useState<{ id: string; name: string } | null>(null);
+  const [deletingLoading, setDeletingLoading] = useState(false);
   const [analytics, setAnalytics] = useState<AnalyticsResponse | null>(null);
 
   const fetchKeys = async () => {
@@ -102,6 +105,23 @@ export default function DashboardOverview() {
       setError(err instanceof Error ? err.message : 'Failed to generate key');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!currentWorkspace || !deletingKey) return;
+    setDeletingLoading(true);
+    setError('');
+    try {
+      await apiRequest(`/workspaces/${currentWorkspace.id}/api-keys/${deletingKey.id}`, {
+        method: 'DELETE',
+      });
+      setDeletingKey(null);
+      fetchKeys();
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to delete key');
+    } finally {
+      setDeletingLoading(false);
     }
   };
 
@@ -220,14 +240,24 @@ export default function DashboardOverview() {
                       <span className="text-xs font-semibold text-white truncate">{k.name}</span>
                       <code className="text-[10px] text-sky-400 font-mono select-all break-all">{fullKey}</code>
                     </div>
-                    <div className="flex items-center gap-2 shrink-0">
+                    <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-auto">
                       <button
                         onClick={() => copyKeyText(fullKey, k.id)}
                         className="px-2.5 py-1 bg-white/10 hover:bg-primary/20 text-white rounded text-[10px] border border-white/10 transition-colors"
                       >
                         {copiedKeyId === k.id ? '✓ Copied' : 'Copy Key'}
                       </button>
-                      <span className="text-[10px] text-muted-foreground">
+                      <button
+                        onClick={() => setDeletingKey({ id: k.id, name: k.name })}
+                        className="p-1 hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 rounded-lg text-xs border border-white/5 hover:border-rose-500/30 transition-colors"
+                        title="Delete / Revoke API Key"
+                        aria-label="Delete API Key"
+                      >
+                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                      </button>
+                      <span className="text-[10px] text-muted-foreground pl-1">
                         {new Date(k.createdAt).toLocaleDateString()}
                       </span>
                     </div>
@@ -339,6 +369,18 @@ export default function DashboardOverview() {
           </div>
         </div>
       </div>
+
+      <ConfirmDialog
+        isOpen={!!deletingKey}
+        title="Revoke & Delete API Key"
+        message={`Are you sure you want to revoke and delete API key "${deletingKey?.name}"? Embedded widgets using this key will immediately stop functioning.`}
+        confirmText="Revoke Key"
+        cancelText="Cancel"
+        variant="danger"
+        loading={deletingLoading}
+        onConfirm={handleConfirmDelete}
+        onClose={() => setDeletingKey(null)}
+      />
     </div>
   );
 }

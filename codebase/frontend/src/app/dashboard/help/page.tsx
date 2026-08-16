@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useAuthStore } from '../../../stores/auth-store';
 import { apiRequest } from '../../../lib/api';
+import { ConfirmDialog } from '../../../components/ui/ConfirmDialog';
 
 interface ApiKeyResponse {
   id: string;
@@ -20,25 +21,46 @@ export default function HelpIntegrationPage() {
   const [selectedKey, setSelectedKey] = useState<string>('');
   const [activeTab, setActiveTab] = useState<'html' | 'react' | 'nextjs' | 'vue' | 'angular' | 'cms'>('html');
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+
+  const fetchKeys = async () => {
+    if (!currentWorkspace) return;
+    try {
+      const res = await apiRequest<ApiKeyResponse[]>(`/workspaces/${currentWorkspace.id}/api-keys`);
+      setKeys(res);
+      if (res.length > 0) {
+        const fullKey = res[0].apiKey || res[0].keyPlain || res[0].keyMasked || 'YOUR_API_KEY';
+        setSelectedKey(fullKey);
+      } else {
+        setSelectedKey('YOUR_API_KEY');
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   useEffect(() => {
-    const fetchKeys = async () => {
-      if (!currentWorkspace) return;
-      try {
-        const res = await apiRequest<ApiKeyResponse[]>(`/workspaces/${currentWorkspace.id}/api-keys`);
-        setKeys(res);
-        if (res.length > 0) {
-          const fullKey = res[0].apiKey || res[0].keyPlain || res[0].keyMasked || 'YOUR_API_KEY';
-          setSelectedKey(fullKey);
-        } else {
-          setSelectedKey('YOUR_API_KEY');
-        }
-      } catch (err) {
-        console.error(err);
-      }
-    };
     fetchKeys();
   }, [currentWorkspace]);
+
+  const activeKeyObj = keys.find(k => (k.apiKey || k.keyPlain || k.keyMasked) === selectedKey);
+
+  const handleConfirmDelete = async () => {
+    if (!currentWorkspace || !activeKeyObj) return;
+    setDeleteLoading(true);
+    try {
+      await apiRequest(`/workspaces/${currentWorkspace.id}/api-keys/${activeKeyObj.id}`, {
+        method: 'DELETE',
+      });
+      setShowDeleteConfirm(false);
+      fetchKeys();
+    } catch (err) {
+      console.error('Failed to delete key:', err);
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
 
   const activeKey = selectedKey || 'YOUR_API_KEY';
   const scriptUrl = 'http://localhost:3001/api/v1/widget/script.js';
@@ -242,7 +264,7 @@ export class AppComponent implements OnInit {
             )}
           </div>
 
-          <div className="flex items-center gap-2 max-w-full">
+          <div className="flex items-center gap-1.5 max-w-full">
             <code className="text-xs text-sky-400 font-mono bg-black/40 px-2.5 py-1.5 rounded-lg border border-white/5 break-all select-all">
               {activeKey}
             </code>
@@ -255,6 +277,18 @@ export class AppComponent implements OnInit {
               </svg>
               {copiedId === 'active-key' ? '✓ Copied' : 'Copy Key'}
             </button>
+            {keys.length > 0 && selectedKey !== 'YOUR_API_KEY' && (
+              <button
+                onClick={() => setShowDeleteConfirm(true)}
+                className="p-1.5 hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 rounded-lg text-xs border border-white/10 hover:border-rose-500/30 transition-colors shrink-0"
+                title="Delete Selected Key"
+                aria-label="Delete Selected Key"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -482,6 +516,18 @@ export class AppComponent implements OnInit {
           </ul>
         </div>
       </div>
+
+      <ConfirmDialog
+        isOpen={showDeleteConfirm}
+        title="Revoke & Delete API Key"
+        message={`Are you sure you want to revoke and delete API key "${activeKeyObj?.name || 'Selected Key'}"? Embedded widgets using this key will immediately stop functioning.`}
+        confirmText="Revoke Key"
+        cancelText="Cancel"
+        variant="danger"
+        loading={deleteLoading}
+        onConfirm={handleConfirmDelete}
+        onClose={() => setShowDeleteConfirm(false)}
+      />
     </div>
   );
 }
