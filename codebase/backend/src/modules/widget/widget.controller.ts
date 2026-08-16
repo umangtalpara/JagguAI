@@ -43,19 +43,19 @@ export class WidgetController {
     return this.widgetService.updateSettings(req.user.id, workspaceId, dto);
   }
 
-  @Get('widget/config')
+  @Get(['widget/config', 'api/v1/widget/config'])
   @ApiOperation({ summary: 'Get widget settings by API Key' })
   async getPublicSettings(@Query('apiKey') apiKey: string): Promise<WidgetSettings> {
     return this.widgetService.getSettingsByApiKey(apiKey);
   }
 
-  @Get('widget/script.js')
+  @Get(['widget/script.js', 'api/v1/widget/script.js'])
   @ApiOperation({ summary: 'Get javascript widget loader script' })
   async getScript(@Res() res: Response): Promise<void> {
     res.sendFile(join(__dirname, '..', '..', 'static', 'widget.js'));
   }
 
-  @Get('widget')
+  @Get(['widget', 'api/v1/widget'])
   @ApiOperation({ summary: 'Get standalone iframe chat widget HTML' })
   async getWidgetHtml(@Res() res: Response): Promise<void> {
     res.sendFile(join(__dirname, '..', '..', 'static', 'widget.html'));
