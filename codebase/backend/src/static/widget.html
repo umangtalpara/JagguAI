@@ -6,7 +6,7 @@
   <title>jagguAI Support Agent</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
     * {
       box-sizing: border-box;
@@ -29,49 +29,66 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      background: #2563eb;
+      background: linear-gradient(135deg, #2563eb, #1d4ed8);
       color: #ffffff;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+      box-shadow: 0 4px 16px rgba(0,0,0,0.3);
       flex-shrink: 0;
+      z-index: 10;
     }
     .header-info {
       display: flex;
       align-items: center;
       gap: 10px;
     }
+    .bot-badge {
+      width: 32px;
+      height: 32px;
+      border-radius: 10px;
+      background: rgba(255,255,255,0.15);
+      border: 1px solid rgba(255,255,255,0.25);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
     .status-dot {
-      width: 10px;
-      height: 10px;
+      position: absolute;
+      bottom: -1px;
+      right: -1px;
+      width: 9px;
+      height: 9px;
       border-radius: 50%;
       background: #4ade80;
-      box-shadow: 0 0 8px #4ade80;
+      border: 2px solid #1d4ed8;
+      box-shadow: 0 0 6px #4ade80;
     }
     .header-title {
-      font-size: 13px;
+      font-size: 14px;
       font-weight: 700;
-      letter-spacing: 0.5px;
-      text-transform: uppercase;
+      letter-spacing: 0.3px;
       line-height: 1.2;
     }
     .header-sub {
-      font-size: 10px;
+      font-size: 11px;
       opacity: 0.85;
-      line-height: 1;
+      line-height: 1.2;
     }
     .close-btn {
-      background: transparent;
-      border: none;
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.15);
       color: white;
       cursor: pointer;
-      padding: 4px;
+      width: 28px;
+      height: 28px;
       border-radius: 8px;
       display: flex;
       align-items: center;
       justify-content: center;
-      transition: background 0.2s;
+      transition: background 0.2s, transform 0.15s;
     }
     .close-btn:hover {
-      background: rgba(255,255,255,0.15);
+      background: rgba(255,255,255,0.25);
+      transform: scale(1.05);
     }
     .messages-container {
       flex: 1;
@@ -80,53 +97,67 @@
       display: flex;
       flex-direction: column;
       gap: 14px;
-      background: rgba(2, 6, 23, 0.7);
+      background: #020617;
+      scroll-behavior: smooth;
     }
     .message-row {
       display: flex;
       gap: 10px;
-      max-width: 88%;
+      max-width: 90%;
+      animation: fadeIn 0.2s ease-out;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
     }
     .message-row.user {
       align-self: flex-end;
       flex-direction: row-reverse;
     }
     .avatar {
-      width: 28px;
-      height: 28px;
+      width: 30px;
+      height: 30px;
       border-radius: 50%;
       background: #0f172a;
-      border: 1px solid rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.15);
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 10px;
+      font-size: 11px;
       font-weight: 700;
       color: #94a3b8;
       flex-shrink: 0;
     }
     .avatar.user-avatar {
-      background: rgba(37, 99, 235, 0.2);
-      border-color: rgba(37, 99, 235, 0.4);
-      color: #60a5fa;
+      background: rgba(37, 99, 235, 0.25);
+      border-color: rgba(37, 99, 235, 0.5);
+      color: #93c5fd;
+    }
+    .avatar.bot-avatar {
+      background: rgba(14, 165, 233, 0.2);
+      border-color: rgba(14, 165, 233, 0.4);
+      color: #38bdf8;
     }
     .bubble {
-      padding: 12px 14px;
-      border-radius: 16px;
-      font-size: 13px;
+      padding: 12px 15px;
+      border-radius: 18px;
+      font-size: 13.5px;
       line-height: 1.55;
       word-break: break-word;
+      user-select: text;
     }
     .bubble.bot {
       background: #0f172a;
-      border: 1px solid rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.1);
       color: #f1f5f9;
       border-bottom-left-radius: 4px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
     }
     .bubble.user {
       background: #2563eb;
       color: #ffffff;
       border-bottom-right-radius: 4px;
+      box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
     }
     .lead-form-container {
       flex: 1;
@@ -134,7 +165,7 @@
       flex-direction: column;
       justify-content: center;
       padding: 24px;
-      background: rgba(2, 6, 23, 0.9);
+      background: #020617;
     }
     .lead-box {
       max-width: 320px;
@@ -146,20 +177,21 @@
     }
     .lead-title {
       text-align: center;
-      font-size: 16px;
+      font-size: 17px;
       font-weight: 700;
       color: #ffffff;
     }
     .lead-sub {
       text-align: center;
-      font-size: 11px;
+      font-size: 12px;
       color: #94a3b8;
+      line-height: 1.4;
     }
     .input-field {
       width: 100%;
-      padding: 10px 14px;
-      background: rgba(255,255,255,0.05);
-      border: 1px solid rgba(255,255,255,0.12);
+      padding: 11px 14px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.15);
       border-radius: 12px;
       color: #ffffff;
       font-size: 13px;
@@ -167,7 +199,7 @@
       transition: border 0.2s;
     }
     .input-field:focus {
-      border-color: #2563eb;
+      border-color: #3b82f6;
     }
     .primary-btn {
       width: 100%;
@@ -176,18 +208,19 @@
       color: white;
       border: none;
       border-radius: 12px;
-      font-size: 13px;
+      font-size: 13.5px;
       font-weight: 700;
       cursor: pointer;
       transition: opacity 0.2s;
+      box-shadow: 0 4px 14px rgba(37,99,235,0.3);
     }
     .primary-btn:hover {
-      opacity: 0.9;
+      opacity: 0.92;
     }
     .input-container {
-      padding: 12px 16px;
+      padding: 12px 14px;
       background: #020617;
-      border-top: 1px solid rgba(255,255,255,0.08);
+      border-top: 1px solid rgba(255,255,255,0.1);
       display: flex;
       gap: 8px;
       align-items: center;
@@ -196,71 +229,114 @@
     .chat-input {
       flex: 1;
       padding: 10px 14px;
-      background: rgba(255,255,255,0.05);
-      border: 1px solid rgba(255,255,255,0.1);
-      border-radius: 12px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 14px;
       color: #ffffff;
       font-size: 13px;
       outline: none;
+      transition: border-color 0.2s;
     }
     .chat-input:focus {
-      border-color: rgba(37, 99, 235, 0.6);
+      border-color: rgba(59, 130, 246, 0.8);
+    }
+    .icon-btn {
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.12);
+      color: #94a3b8;
+      border-radius: 12px;
+      width: 40px;
+      height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: all 0.2s;
+    }
+    .icon-btn:hover {
+      background: rgba(255,255,255,0.15);
+      color: #ffffff;
+    }
+    .icon-btn.recording {
+      background: #ef4444 !important;
+      border-color: #dc2626 !important;
+      color: #ffffff !important;
+      animation: pulseRecord 1.2s infinite ease-in-out;
+    }
+    @keyframes pulseRecord {
+      0% { transform: scale(1); box-shadow: 0 0 0 rgba(239, 68, 68, 0.4); }
+      50% { transform: scale(1.08); box-shadow: 0 0 14px rgba(239, 68, 68, 0.8); }
+      100% { transform: scale(1); box-shadow: 0 0 0 rgba(239, 68, 68, 0.4); }
     }
     .send-btn {
       background: #2563eb;
       color: white;
       border: none;
       border-radius: 12px;
-      width: 38px;
-      height: 38px;
+      width: 40px;
+      height: 40px;
       display: flex;
       align-items: center;
       justify-content: center;
       cursor: pointer;
       flex-shrink: 0;
-      transition: opacity 0.2s;
+      transition: opacity 0.2s, transform 0.15s;
+      box-shadow: 0 4px 12px rgba(37,99,235,0.3);
     }
     .send-btn:hover {
       opacity: 0.9;
+      transform: scale(1.04);
     }
     .prompts-bar {
-      padding: 8px 16px;
-      background: rgba(2, 6, 23, 0.9);
+      padding: 8px 14px;
+      background: rgba(2, 6, 23, 0.95);
       display: flex;
       gap: 6px;
       overflow-x: auto;
-      border-top: 1px solid rgba(255,255,255,0.05);
+      border-top: 1px solid rgba(255,255,255,0.06);
       flex-shrink: 0;
     }
     .prompt-pill {
       padding: 6px 12px;
       background: rgba(255,255,255,0.06);
-      border: 1px solid rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.12);
       color: #93c5fd;
       border-radius: 20px;
-      font-size: 11px;
+      font-size: 11.5px;
       font-weight: 500;
       cursor: pointer;
       white-space: nowrap;
       transition: all 0.2s;
     }
     .prompt-pill:hover {
-      background: rgba(37,99,235,0.2);
-      border-color: rgba(37,99,235,0.4);
+      background: rgba(37,99,235,0.25);
+      border-color: rgba(37,99,235,0.5);
+      color: #ffffff;
     }
   </style>
 </head>
 <body>
   <div class="header" id="widget-header">
     <div class="header-info">
-      <div class="status-dot"></div>
+      <div class="bot-badge">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 8V4H8"></path>
+          <rect width="16" height="12" x="4" y="8" rx="2"></rect>
+          <path d="M2 14h2"></path>
+          <path d="M20 14h2"></path>
+          <path d="M15 13v2"></path>
+          <path d="M9 13v2"></path>
+        </svg>
+        <div class="status-dot"></div>
+      </div>
       <div>
         <div class="header-title" id="header-title">Support Assistant</div>
-        <div class="header-sub">Trained on Product Docs</div>
+        <div class="header-sub">Online &bull; AI Powered</div>
       </div>
     </div>
     <button class="close-btn" id="close-btn" aria-label="Close">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
         <line x1="18" y1="6" x2="6" y2="18"></line>
         <line x1="6" y1="6" x2="18" y2="18"></line>
       </svg>
@@ -270,15 +346,15 @@
   <div id="lead-view" class="lead-form-container" style="display: none;">
     <form class="lead-box" id="lead-form">
       <div>
-        <div class="lead-title">Let's get started!</div>
-        <div class="lead-sub" style="margin-top: 4px;">Please introduce yourself to start chatting with support.</div>
+        <div class="lead-title">Let's get started! 👋</div>
+        <div class="lead-sub" style="margin-top: 4px;">Please introduce yourself to start chatting with our support assistant.</div>
       </div>
       <div>
-        <label style="font-size: 11px; color: #94a3b8; display: block; margin-bottom: 6px;">Your Name</label>
+        <label style="font-size: 11px; color: #94a3b8; display: block; margin-bottom: 6px; font-weight: 600;">Your Name</label>
         <input type="text" id="lead-name" class="input-field" placeholder="John Doe" required>
       </div>
       <div>
-        <label style="font-size: 11px; color: #94a3b8; display: block; margin-bottom: 6px;">Email Address</label>
+        <label style="font-size: 11px; color: #94a3b8; display: block; margin-bottom: 6px; font-weight: 600;">Email Address</label>
         <input type="email" id="lead-email" class="input-field" placeholder="john@example.com" required>
       </div>
       <button type="submit" class="primary-btn" id="lead-btn">Start Chat</button>
@@ -289,8 +365,15 @@
     <div class="messages-container" id="messages-box"></div>
     <div class="prompts-bar" id="prompts-bar" style="display: none;"></div>
     <form class="input-container" id="chat-form">
-      <input type="text" id="chat-input" class="chat-input" placeholder="Type your question..." autocomplete="off" required>
-      <button type="submit" class="send-btn" id="send-btn">
+      <input type="text" id="chat-input" class="chat-input" placeholder="Type your question..." autocomplete="off">
+      <button type="button" class="icon-btn" id="mic-btn" title="Voice Input / Microphone" aria-label="Microphone">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"></path>
+          <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+          <line x1="12" y1="19" x2="12" y2="22"></line>
+        </svg>
+      </button>
+      <button type="submit" class="send-btn" id="send-btn" title="Send Message" aria-label="Send">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <line x1="22" y1="2" x2="11" y2="13"></line>
           <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
@@ -324,6 +407,8 @@
     const promptsBar = document.getElementById('prompts-bar');
     const chatInput = document.getElementById('chat-input');
     const closeBtn = document.getElementById('close-btn');
+    const micBtn = document.getElementById('mic-btn');
+    const sendBtn = document.getElementById('send-btn');
 
     closeBtn.onclick = () => {
       window.parent.postMessage('jaggu-close-widget', '*');
@@ -335,11 +420,13 @@
 
       const avatar = document.createElement('div');
       avatar.className = 'avatar ' + (role === 'user' ? 'user-avatar' : 'bot-avatar');
-      avatar.textContent = role === 'user' ? 'ME' : 'AI';
+      avatar.innerHTML = role === 'user'
+        ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>'
+        : '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8V4H8"></path><rect width="16" height="12" x="4" y="8" rx="2"></rect><path d="M2 14h2"></path><path d="M20 14h2"></path><path d="M15 13v2"></path><path d="M9 13v2"></path></svg>';
 
       const bubble = document.createElement('div');
       bubble.className = 'bubble ' + (role === 'user' ? 'user' : 'bot');
-      if (role === 'user') {
+      if (role === 'user' && widgetConfig.primaryColor) {
         bubble.style.backgroundColor = widgetConfig.primaryColor;
       }
       bubble.textContent = text;
@@ -351,14 +438,70 @@
       return bubble;
     }
 
+    // Voice recognition
+    let isRecording = false;
+    let recognition = null;
+    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+      const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+      recognition = new SpeechRec();
+      recognition.continuous = false;
+      recognition.interimResults = false;
+      recognition.lang = 'en-US';
+
+      recognition.onstart = () => {
+        isRecording = true;
+        micBtn.classList.add('recording');
+        chatInput.placeholder = 'Listening to your voice...';
+      };
+
+      recognition.onresult = (event) => {
+        const transcript = event.results[0][0].transcript;
+        chatInput.value = transcript;
+        sendMessage(transcript);
+      };
+
+      recognition.onerror = () => {
+        stopVoice();
+      };
+
+      recognition.onend = () => {
+        stopVoice();
+      };
+    }
+
+    function stopVoice() {
+      isRecording = false;
+      micBtn.classList.remove('recording');
+      chatInput.placeholder = 'Type your question...';
+    }
+
+    micBtn.onclick = () => {
+      if (!recognition) {
+        alert('Voice recognition is not supported in this browser.');
+        return;
+      }
+      if (isRecording) {
+        recognition.stop();
+        stopVoice();
+      } else {
+        try {
+          recognition.start();
+        } catch (e) {
+          stopVoice();
+        }
+      }
+    };
+
     // Load config
     fetch(apiBase + '/widget/config?apiKey=' + apiKey)
       .then(res => res.json())
       .then(cfg => {
-        widgetConfig = Object.assign(widgetConfig, cfg);
+        if (cfg && !cfg.statusCode) {
+          widgetConfig = Object.assign(widgetConfig, cfg);
+        }
         if (widgetConfig.primaryColor) {
-          header.style.backgroundColor = widgetConfig.primaryColor;
-          document.getElementById('send-btn').style.backgroundColor = widgetConfig.primaryColor;
+          header.style.background = widgetConfig.primaryColor;
+          sendBtn.style.backgroundColor = widgetConfig.primaryColor;
           document.getElementById('lead-btn').style.backgroundColor = widgetConfig.primaryColor;
         }
 
@@ -372,23 +515,19 @@
             btn.textContent = p;
             btn.onclick = () => {
               chatInput.value = p;
-              document.getElementById('chat-form').dispatchEvent(new Event('submit'));
+              sendMessage(p);
             };
             promptsBar.appendChild(btn);
           });
         }
 
-        if (!leadCaptured) {
-          leadView.style.display = 'flex';
-          chatView.style.display = 'none';
-        } else {
-          leadView.style.display = 'none';
-          chatView.style.display = 'flex';
-          appendMessage('assistant', widgetConfig.greeting || 'Hello! How can I assist you today?');
-        }
+        leadView.style.display = 'none';
+        chatView.style.display = 'flex';
+        appendMessage('assistant', widgetConfig.greeting || 'Hello! How can I assist you today?');
       })
-      .catch(err => {
-        console.error('Failed to load widget config', err);
+      .catch(() => {
+        leadView.style.display = 'none';
+        chatView.style.display = 'flex';
         appendMessage('assistant', 'Hello! How can I assist you today?');
       });
 
@@ -416,15 +555,13 @@
       appendMessage('assistant', widgetConfig.greeting || 'Hello! How can I assist you today?');
     };
 
-    // Chat submit
-    document.getElementById('chat-form').onsubmit = async (e) => {
-      e.preventDefault();
-      const q = chatInput.value.trim();
-      if (!q) return;
+    async function sendMessage(q) {
+      if (!q || !q.trim()) return;
+      const text = q.trim();
       chatInput.value = '';
-      appendMessage('user', q);
+      appendMessage('user', text);
 
-      const botBubble = appendMessage('assistant', '...');
+      const botBubble = appendMessage('assistant', 'Thinking...');
 
       try {
         const res = await fetch(apiBase + '/chat/stream', {
@@ -433,12 +570,13 @@
           body: JSON.stringify({
             apiKey,
             visitorId,
-            message: q
+            message: text
           })
         });
 
         if (!res.ok) {
-          botBubble.textContent = 'Sorry, could not process request right now.';
+          const errData = await res.json().catch(() => ({}));
+          botBubble.textContent = errData.message || 'Sorry, I am unable to process this request with the current API Key.';
           return;
         }
 
@@ -460,9 +598,7 @@
                   botBubble.textContent = fullText;
                   messagesBox.scrollTop = messagesBox.scrollHeight;
                 }
-              } catch (err) {
-                // Ignore parsing incomplete tokens
-              }
+              } catch (err) {}
             }
           }
         }
@@ -470,8 +606,14 @@
           botBubble.textContent = 'Thanks for your query! I have processed your request.';
         }
       } catch (err) {
-        botBubble.textContent = 'Error connecting to support agent.';
+        botBubble.textContent = 'Connection error. Please check your network or API Key.';
       }
+    }
+
+    // Chat submit handler
+    document.getElementById('chat-form').onsubmit = (e) => {
+      e.preventDefault();
+      sendMessage(chatInput.value);
     };
   </script>
 </body>
