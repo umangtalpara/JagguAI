@@ -23,12 +23,7 @@ async function bootstrap(): Promise<void> {
   app.use(helmet({
     crossOriginResourcePolicy: false,
     crossOriginOpenerPolicy: false,
-    contentSecurityPolicy: {
-      directives: {
-        ...helmet.contentSecurityPolicy.getDefaultDirectives(),
-        'frame-ancestors': ['*'],
-      },
-    },
+    contentSecurityPolicy: false,
     frameguard: false,
   }));
 
