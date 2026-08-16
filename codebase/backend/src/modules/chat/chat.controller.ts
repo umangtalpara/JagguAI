@@ -47,7 +47,14 @@ export class ChatController {
     try {
       const generator = this.chatService.streamResponse(workspaceId, dto.visitorId || 'vis_anon', dto.message);
       for await (const chunk of generator) {
-        res.write(`data: ${JSON.stringify({ token: chunk })}\n\n`);
+        if (chunk.startsWith('[METADATA]:')) {
+          try {
+            const meta = JSON.parse(chunk.substring(11).trim());
+            res.write(`data: ${JSON.stringify({ sources: meta.sources || [] })}\n\n`);
+          } catch (e) {}
+        } else {
+          res.write(`data: ${JSON.stringify({ token: chunk })}\n\n`);
+        }
       }
       res.write(`data: [DONE]\n\n`);
       res.end();

@@ -690,10 +690,13 @@
               if (rawData === '[DONE]') continue;
               try {
                 const data = JSON.parse(rawData);
+                if (data.sources) {
+                  citations = data.sources;
+                }
                 if (data.token) {
                   if (data.token.startsWith('[METADATA]:')) {
                     try {
-                      const meta = JSON.parse(data.token.substring(11));
+                      const meta = JSON.parse(data.token.substring(11).trim());
                       if (meta.sources) {
                         citations = meta.sources;
                       }
