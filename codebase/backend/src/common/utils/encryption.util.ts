@@ -38,7 +38,6 @@ export function hashApiKey(apiKey: string): string {
 }
 
 export function maskApiKey(apiKey: string): string {
-  if (apiKey.length < 15) return '***';
-  return apiKey.substring(0, 15) + '...' + apiKey.substring(apiKey.length - 4);
+  return apiKey;
 }
 

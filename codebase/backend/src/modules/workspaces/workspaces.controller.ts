@@ -133,10 +133,13 @@ export class WorkspacesController {
     return keys.map(k => {
       const kId = (k as unknown as Record<string, unknown>)['_id'];
       const kCreatedAt = (k as unknown as Record<string, unknown>)['createdAt'];
+      const plainKey = (k as unknown as Record<string, unknown>)['keyPlain'] || (k as unknown as Record<string, unknown>)['apiKey'] || k.keyMasked;
       return {
         id: String(kId || ''),
         workspaceId: k.workspaceId,
         name: k.name,
+        apiKey: String(plainKey),
+        keyPlain: String(plainKey),
         keyMasked: k.keyMasked,
         isActive: k.isActive,
         createdAt: kCreatedAt instanceof Date ? kCreatedAt : new Date(),

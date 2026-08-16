@@ -45,6 +45,8 @@ export default function DashboardOverview() {
   const [generatedKey, setGeneratedKey] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [copiedKeyId, setCopiedKeyId] = useState<string | null>(null);
+  const [copiedEmbed, setCopiedEmbed] = useState(false);
   const [analytics, setAnalytics] = useState<AnalyticsResponse | null>(null);
 
   const fetchKeys = async () => {
@@ -78,15 +80,14 @@ export default function DashboardOverview() {
 
   const handleGenerateKey = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!currentWorkspace || !newKeyName.trim()) {
+    if (!newKeyName.trim() || !currentWorkspace) {
       return;
     }
     setLoading(true);
     setError('');
-    setGeneratedKey('');
 
     try {
-      const res = await apiRequest<ApiKeyResponse>(`/workspaces/${currentWorkspace.id}/api-keys`, {
+      const res = await apiRequest<{ apiKey?: string; keyPlain?: string }>(`/workspaces/${currentWorkspace.id}/api-keys`, {
         method: 'POST',
         body: JSON.stringify({ name: newKeyName }),
       });
@@ -104,7 +105,13 @@ export default function DashboardOverview() {
     }
   };
 
-  const activeApiKey = keys[0]?.keyMasked || keys[0]?.keyMask || 'YOUR_API_KEY';
+  const copyKeyText = (text: string, id: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedKeyId(id);
+    setTimeout(() => setCopiedKeyId(null), 2500);
+  };
+
+  const activeApiKey = keys[0]?.apiKey || keys[0]?.keyPlain || keys[0]?.keyMasked || keys[0]?.keyMask || 'YOUR_API_KEY';
   const embedCode = `<script src="http://localhost:3001/api/v1/widget/script.js" data-api-key="${activeApiKey}" defer></script>`;
 
   return (
@@ -191,10 +198,10 @@ export default function DashboardOverview() {
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 bg-slate-950 p-2.5 rounded border border-white/10">
                 <code className="text-[11px] text-white select-all break-all">{generatedKey}</code>
                 <button
-                  onClick={() => navigator.clipboard.writeText(generatedKey)}
+                  onClick={() => copyKeyText(generatedKey, 'gen-key')}
                   className="px-2.5 py-1 bg-white/5 hover:bg-white/10 rounded text-primary text-xs shrink-0 self-end sm:self-auto border border-primary/20"
                 >
-                  Copy
+                  {copiedKeyId === 'gen-key' ? '✓ Copied' : 'Copy'}
                 </button>
               </div>
             </div>
@@ -205,17 +212,28 @@ export default function DashboardOverview() {
             {keys.length === 0 ? (
               <p className="text-xs text-muted-foreground">No API keys found.</p>
             ) : (
-              keys.map((k) => (
-                <div key={k.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 bg-slate-950/40 rounded-xl border border-white/5 gap-2">
-                  <div className="flex flex-col min-w-0">
-                    <span className="text-xs font-semibold text-white truncate">{k.name}</span>
-                    <code className="text-[10px] text-muted-foreground truncate">{k.keyMasked || k.keyMask}</code>
+              keys.map((k) => {
+                const fullKey = k.apiKey || k.keyPlain || k.keyMasked || k.keyMask || '';
+                return (
+                  <div key={k.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 bg-slate-950/40 rounded-xl border border-white/5 gap-2">
+                    <div className="flex flex-col min-w-0 pr-2">
+                      <span className="text-xs font-semibold text-white truncate">{k.name}</span>
+                      <code className="text-[10px] text-sky-400 font-mono select-all break-all">{fullKey}</code>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <button
+                        onClick={() => copyKeyText(fullKey, k.id)}
+                        className="px-2.5 py-1 bg-white/10 hover:bg-primary/20 text-white rounded text-[10px] border border-white/10 transition-colors"
+                      >
+                        {copiedKeyId === k.id ? '✓ Copied' : 'Copy Key'}
+                      </button>
+                      <span className="text-[10px] text-muted-foreground">
+                        {new Date(k.createdAt).toLocaleDateString()}
+                      </span>
+                    </div>
                   </div>
-                  <span className="text-[10px] text-muted-foreground shrink-0">
-                    {new Date(k.createdAt).toLocaleDateString()}
-                  </span>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         </div>
@@ -227,14 +245,18 @@ export default function DashboardOverview() {
           </p>
 
           <div className="relative group">
-            <pre className="bg-slate-950 p-3 sm:p-4 rounded-xl border border-white/10 overflow-x-auto text-[10px] sm:text-[11px] text-sky-400 font-mono leading-relaxed select-all pr-14">
+            <pre className="bg-slate-950 p-3 sm:p-4 rounded-xl border border-white/10 overflow-x-auto text-[10px] sm:text-[11px] text-sky-400 font-mono leading-relaxed select-all pr-16">
               {embedCode}
             </pre>
             <button
-              onClick={() => navigator.clipboard.writeText(embedCode)}
+              onClick={() => {
+                navigator.clipboard.writeText(embedCode);
+                setCopiedEmbed(true);
+                setTimeout(() => setCopiedEmbed(false), 2500);
+              }}
               className="absolute top-2 right-2 px-2.5 py-1 bg-white/10 hover:bg-primary/20 text-white rounded text-[10px] border border-white/10 transition-colors"
             >
-              Copy
+              {copiedEmbed ? '✓ Copied' : 'Copy'}
             </button>
           </div>
 

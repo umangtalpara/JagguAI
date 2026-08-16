@@ -91,6 +91,7 @@ export class WorkspacesService {
       workspaceId,
       keyHash: hash,
       keyMasked: masked,
+      keyPlain: rawKey,
       name,
       isActive: true,
     });

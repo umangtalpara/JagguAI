@@ -12,6 +12,9 @@ export class ApiKey {
   @Prop({ required: true })
   keyMasked!: string; // e.g. jaggu_live_abc123...7890
 
+  @Prop({ required: false })
+  keyPlain?: string; // Full raw API key for direct embedding and copying
+
   @Prop({ required: true, trim: true })
   name!: string;
 
