@@ -15,7 +15,8 @@ async function bootstrap(): Promise<void> {
       { path: 'health', method: RequestMethod.ALL },
       { path: 'widget', method: RequestMethod.ALL },
       { path: 'widget/script.js', method: RequestMethod.ALL },
-      { path: 'widget/config', method: RequestMethod.ALL },
+      { path: 'api/v1/widget', method: RequestMethod.ALL },
+      { path: 'api/v1/widget/script.js', method: RequestMethod.ALL },
     ],
   });
 

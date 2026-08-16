@@ -35,4 +35,16 @@ export class AppController {
       },
     });
   }
+
+  @Get('widget/script.js')
+  @ApiOperation({ summary: 'Root widget script alias' })
+  rootWidgetScript(@Res() res: Response) {
+    res.sendFile(require('path').join(__dirname, 'static', 'widget.js'));
+  }
+
+  @Get('widget')
+  @ApiOperation({ summary: 'Root widget HTML alias' })
+  rootWidgetHtml(@Res() res: Response) {
+    res.sendFile(require('path').join(__dirname, 'static', 'widget.html'));
+  }
 }
