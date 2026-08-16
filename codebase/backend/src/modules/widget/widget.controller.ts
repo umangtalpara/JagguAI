@@ -54,4 +54,10 @@ export class WidgetController {
   async getScript(@Res() res: Response): Promise<void> {
     res.sendFile(join(__dirname, '..', '..', 'static', 'widget.js'));
   }
+
+  @Get('widget')
+  @ApiOperation({ summary: 'Get standalone iframe chat widget HTML' })
+  async getWidgetHtml(@Res() res: Response): Promise<void> {
+    res.sendFile(join(__dirname, '..', '..', 'static', 'widget.html'));
+  }
 }
