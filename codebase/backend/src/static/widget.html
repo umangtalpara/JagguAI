@@ -103,7 +103,7 @@
     .message-row {
       display: flex;
       gap: 10px;
-      max-width: 90%;
+      max-width: 92%;
       animation: fadeIn 0.2s ease-out;
     }
     @keyframes fadeIn {
@@ -145,6 +145,9 @@
       line-height: 1.55;
       word-break: break-word;
       user-select: text;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
     }
     .bubble.bot {
       background: #0f172a;
@@ -158,6 +161,50 @@
       color: #ffffff;
       border-bottom-right-radius: 4px;
       box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
+    }
+    .bubble-text {
+      white-space: pre-wrap;
+    }
+    /* Citations / Sources Badge Container */
+    .sources-container {
+      margin-top: 4px;
+      padding-top: 8px;
+      border-top: 1px solid rgba(255,255,255,0.08);
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+    .sources-label {
+      font-size: 10.5px;
+      font-weight: 700;
+      color: #94a3b8;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+    }
+    .sources-pills {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+    }
+    .source-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 8px;
+      border-radius: 8px;
+      background: rgba(37, 99, 235, 0.15);
+      border: 1px solid rgba(37, 99, 235, 0.3);
+      color: #60a5fa;
+      font-size: 11px;
+      font-weight: 500;
+      text-decoration: none;
+      transition: all 0.2s;
+    }
+    .source-pill:hover {
+      background: rgba(37, 99, 235, 0.3);
+      border-color: rgba(37, 99, 235, 0.6);
+      color: #ffffff;
+      transform: translateY(-1px);
     }
     .lead-form-container {
       flex: 1;
@@ -414,7 +461,7 @@
       window.parent.postMessage('jaggu-close-widget', '*');
     };
 
-    function appendMessage(role, text) {
+    function appendMessage(role, text, sources) {
       const row = document.createElement('div');
       row.className = 'message-row ' + (role === 'user' ? 'user' : 'bot');
 
@@ -429,13 +476,56 @@
       if (role === 'user' && widgetConfig.primaryColor) {
         bubble.style.backgroundColor = widgetConfig.primaryColor;
       }
-      bubble.textContent = text;
+
+      const textDiv = document.createElement('div');
+      textDiv.className = 'bubble-text';
+      textDiv.textContent = text;
+      bubble.appendChild(textDiv);
 
       row.appendChild(avatar);
       row.appendChild(bubble);
       messagesBox.appendChild(row);
       messagesBox.scrollTop = messagesBox.scrollHeight;
-      return bubble;
+
+      if (sources && sources.length > 0) {
+        renderCitations(bubble, sources);
+      }
+
+      return { bubble, textDiv };
+    }
+
+    function renderCitations(bubbleEl, sources) {
+      if (!sources || sources.length === 0) return;
+      if (bubbleEl.querySelector('.sources-container')) return;
+
+      const sourcesDiv = document.createElement('div');
+      sourcesDiv.className = 'sources-container';
+      sourcesDiv.innerHTML = '<span class="sources-label">📚 Verified Sources:</span>';
+
+      const pills = document.createElement('div');
+      pills.className = 'sources-pills';
+      sources.forEach(s => {
+        const a = document.createElement('a');
+        a.className = 'source-pill';
+        a.href = s.url;
+        a.target = '_blank';
+        a.rel = 'noopener noreferrer';
+        let cleanTitle = s.title;
+        if (!cleanTitle || cleanTitle === 'Source Document') {
+          try {
+            const parsed = new URL(s.url);
+            cleanTitle = parsed.pathname === '/' || !parsed.pathname ? parsed.hostname : parsed.pathname.replace(/^\//, '');
+          } catch(e) {
+            cleanTitle = 'Source Link';
+          }
+        }
+        a.textContent = '🔗 ' + cleanTitle;
+        pills.appendChild(a);
+      });
+
+      sourcesDiv.appendChild(pills);
+      bubbleEl.appendChild(sourcesDiv);
+      messagesBox.scrollTop = messagesBox.scrollHeight;
     }
 
     // Voice recognition
@@ -455,7 +545,9 @@
       };
 
       recognition.onresult = (event) => {
-        const transcript = event.results[0][0].transcript;
+        let transcript = event.results[0][0].transcript;
+        // Clean speech-to-text misrecognition
+        transcript = transcript.replace(/\b(porn\s*pic|porn\s*peak|prove\s*and\s*peak)\b/gi, 'ProvenPeak');
         chatInput.value = transcript;
         sendMessage(transcript);
       };
@@ -561,7 +653,7 @@
       chatInput.value = '';
       appendMessage('user', text);
 
-      const botBubble = appendMessage('assistant', 'Thinking...');
+      const botObj = appendMessage('assistant', 'Thinking...');
 
       try {
         const res = await fetch(apiBase + '/chat/stream', {
@@ -576,13 +668,16 @@
 
         if (!res.ok) {
           const errData = await res.json().catch(() => ({}));
-          botBubble.textContent = errData.message || 'Sorry, I am unable to process this request with the current API Key.';
+          botObj.textDiv.textContent = errData.message || 'Sorry, I am unable to process this request with the current API Key.';
           return;
         }
 
         const reader = res.body.getReader();
         const decoder = new TextDecoder();
         let fullText = '';
+        let citations = [];
+
+        botObj.textDiv.textContent = '';
 
         while (true) {
           const { done, value } = await reader.read();
@@ -591,22 +686,36 @@
           const lines = chunk.split('\n');
           for (const line of lines) {
             if (line.startsWith('data: ')) {
+              const rawData = line.substring(6).trim();
+              if (rawData === '[DONE]') continue;
               try {
-                const data = JSON.parse(line.substring(6));
+                const data = JSON.parse(rawData);
                 if (data.token) {
-                  fullText += data.token;
-                  botBubble.textContent = fullText;
-                  messagesBox.scrollTop = messagesBox.scrollHeight;
+                  if (data.token.startsWith('[METADATA]:')) {
+                    try {
+                      const meta = JSON.parse(data.token.substring(11));
+                      if (meta.sources) {
+                        citations = meta.sources;
+                      }
+                    } catch (e) {}
+                  } else {
+                    fullText += data.token;
+                    botObj.textDiv.textContent = fullText;
+                    messagesBox.scrollTop = messagesBox.scrollHeight;
+                  }
                 }
               } catch (err) {}
             }
           }
         }
+
         if (!fullText) {
-          botBubble.textContent = 'Thanks for your query! I have processed your request.';
+          botObj.textDiv.textContent = 'Thanks for your query! I have processed your request.';
+        } else if (citations.length > 0) {
+          renderCitations(botObj.bubble, citations);
         }
       } catch (err) {
-        botBubble.textContent = 'Connection error. Please check your network or API Key.';
+        botObj.textDiv.textContent = 'Connection error. Please check your network or API Key.';
       }
     }
 

@@ -40,6 +40,11 @@ export class ChatService {
       return;
     }
 
+    // Normalize common speech-to-text transcription / phonetic typos
+    const cleanQuery = content
+      .replace(/\b(porn\s*pic|porn\s*peak|prove\s*and\s*peak|proven\s*peek|provin\s*peak)\b/gi, 'ProvenPeak')
+      .trim();
+
     // Step 2: Conversation persistence
     this.logger.log(`[2/6] 📝 Resolving conversation for visitor...`);
     const convo = await this.getOrCreateConversation(workspaceId, visitorId);
@@ -49,7 +54,7 @@ export class ChatService {
     await this.chatRepository.insertMessage({
       conversationId: convoId,
       sender: MessageSender.VISITOR,
-      content,
+      content: cleanQuery,
     });
 
     const history = await this.chatRepository.getMessagesByConversation(convoId);
@@ -58,7 +63,7 @@ export class ChatService {
     // Step 3: Generate embedding
     this.logger.log(`[3/6] 🧠 Generating embedding for query...`);
     const t3 = Date.now();
-    const vector = await this.embeddingsService.generateEmbedding(content);
+    const vector = await this.embeddingsService.generateEmbedding(cleanQuery);
     this.logger.log(`[3/6] ✅ Embedding generated (${vector.length} dims) in ${Date.now() - t3}ms`);
 
     // Step 4: Qdrant similarity search
