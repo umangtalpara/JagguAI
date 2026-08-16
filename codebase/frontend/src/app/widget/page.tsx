@@ -413,10 +413,10 @@ function WidgetContent() {
   }
 
   return (
-    <div className={`flex flex-col h-screen select-none border rounded-2xl overflow-hidden font-sans transition-all duration-300 ${config.theme === 'light' ? 'bg-white text-slate-800 border-slate-200' : 'bg-slate-950 text-white border-white/5'
+    <div className={`flex flex-col h-screen h-[100dvh] select-none border rounded-2xl overflow-hidden font-sans transition-all duration-300 ${config.theme === 'light' ? 'bg-white text-slate-800 border-slate-200' : 'bg-slate-950 text-white border-white/5'
       }`}>
       <div
-        className="p-4 flex items-center justify-between shadow-md shadow-black/20"
+        className="p-3.5 sm:p-4 flex items-center justify-between shadow-md shadow-black/20 shrink-0"
         style={{ backgroundColor: config.primaryColor }}
       >
         <div className="flex items-center gap-2">
@@ -441,10 +441,10 @@ function WidgetContent() {
       </div>
 
       {!leadCaptured ? (
-        <div className={`flex-1 flex flex-col justify-center p-6 ${config.theme === 'light' ? 'bg-slate-50' : 'bg-slate-950/80 backdrop-blur-md'
+        <div className={`flex-1 flex flex-col justify-center p-5 sm:p-6 overflow-y-auto ${config.theme === 'light' ? 'bg-slate-50' : 'bg-slate-950/80 backdrop-blur-md'
           }`}>
-          <form onSubmit={handleLeadSubmit} className="space-y-4">
-            <div className="text-center space-y-1.5 mb-6">
+          <form onSubmit={handleLeadSubmit} className="space-y-4 max-w-sm mx-auto w-full">
+            <div className="text-center space-y-1.5 mb-5 sm:mb-6">
               <h4 className={`text-sm font-bold ${config.theme === 'light' ? 'text-slate-800' : 'text-white'}`}>Let's get started!</h4>
               <p className="text-[10px] text-slate-400">Please introduce yourself to start chatting with support.</p>
             </div>
@@ -491,22 +491,22 @@ function WidgetContent() {
         </div>
       ) : (
         <>
-          <div className={`flex-1 p-4 overflow-y-auto space-y-4 scrollbar-thin scrollbar-thumb-white/5 ${config.theme === 'light' ? 'bg-slate-50' : 'bg-slate-950/60'
+          <div className={`flex-1 p-3.5 sm:p-4 overflow-y-auto space-y-3 sm:space-y-4 scrollbar-thin scrollbar-thumb-white/5 ${config.theme === 'light' ? 'bg-slate-50' : 'bg-slate-950/60'
             }`}>
             {messages.map((msg, index) => {
               const isBot = msg.sender === 'assistant';
               return (
-                <div key={index} className={`flex gap-2.5 ${isBot ? '' : 'flex-row-reverse'}`}>
+                <div key={index} className={`flex gap-2 sm:gap-2.5 ${isBot ? '' : 'flex-row-reverse'}`}>
                   {isBot ? (
                     config.avatarUrl ? (
-                      <img src={config.avatarUrl} alt="Avatar" className="h-7 w-7 rounded-full object-cover border border-white/10 bg-slate-850" />
+                      <img src={config.avatarUrl} alt="Avatar" className="h-6 w-6 sm:h-7 sm:w-7 rounded-full object-cover border border-white/10 bg-slate-850 shrink-0" />
                     ) : (
-                      <div className="h-7 w-7 rounded-full flex items-center justify-center text-[10px] font-bold text-white/90 border border-white/5 bg-slate-900">AI</div>
+                      <div className="h-6 w-6 sm:h-7 sm:w-7 rounded-full flex items-center justify-center text-[10px] font-bold text-white/90 border border-white/5 bg-slate-900 shrink-0">AI</div>
                     )
                   ) : (
-                    <div className="h-7 w-7 rounded-full flex items-center justify-center text-[10px] font-bold text-primary border border-primary/20 bg-primary/10">ME</div>
+                    <div className="h-6 w-6 sm:h-7 sm:w-7 rounded-full flex items-center justify-center text-[10px] font-bold text-primary border border-primary/20 bg-primary/10 shrink-0">ME</div>
                   )}
-                  <div className={`max-w-[75%] p-3.5 rounded-2xl text-xs leading-relaxed border ${isBot
+                  <div className={`max-w-[85%] sm:max-w-[75%] p-3 sm:p-3.5 rounded-2xl text-xs leading-relaxed border break-words ${isBot
                       ? config.theme === 'light'
                         ? 'bg-slate-200/70 border-slate-300/40 text-slate-900 rounded-bl-none'
                         : 'bg-slate-900/60 border-white/5 text-slate-100 rounded-bl-none'

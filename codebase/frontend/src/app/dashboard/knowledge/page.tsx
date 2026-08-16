@@ -222,10 +222,10 @@ export default function KnowledgeBase() {
   };
 
   return (
-    <div className="space-y-8">
-      <div className="flex flex-col gap-2">
-        <h2 className="text-2xl font-bold text-white">Knowledge Base</h2>
-        <p className="text-sm text-muted-foreground">
+    <div className="space-y-6 sm:space-y-8">
+      <div className="flex flex-col gap-1 sm:gap-2">
+        <h2 className="text-xl sm:text-2xl font-bold text-white">Knowledge Base</h2>
+        <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
           Feed files, scrape websites, or manually log FAQs to train your AI support agent.
         </p>
       </div>
@@ -236,17 +236,18 @@ export default function KnowledgeBase() {
         onClose={() => setMessage({ text: '', type: '' })}
       />
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="glass p-6 rounded-2xl border border-white/5 space-y-6 lg:col-span-1">
-          <div className="flex border-b border-white/5 pb-px gap-2">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8">
+        <div className="glass p-5 sm:p-6 rounded-2xl border border-white/5 space-y-5 lg:col-span-1">
+          <div className="flex border-b border-white/5 pb-px gap-1 sm:gap-2">
             {(['upload', 'crawl', 'faq'] as const).map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
-                className={`flex-1 pb-3 text-xs font-semibold capitalize border-b-2 transition-all ${activeTab === tab
+                className={`flex-1 pb-2.5 text-xs font-semibold capitalize border-b-2 transition-all ${
+                  activeTab === tab
                     ? 'border-primary text-primary'
                     : 'border-transparent text-muted-foreground hover:text-white'
-                  }`}
+                }`}
               >
                 {tab === 'crawl' ? 'Crawler' : tab === 'faq' ? 'FAQs' : 'File Upload'}
               </button>
@@ -256,14 +257,16 @@ export default function KnowledgeBase() {
           {activeTab === 'upload' && (
             <form onSubmit={handleFileUpload} className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-muted-foreground uppercase mb-2">Select Document</label>
+                <label className="block text-xs font-semibold text-muted-foreground uppercase mb-2">
+                  Select Document
+                </label>
                 <input
                   id="file-input"
                   type="file"
                   required
                   accept=".pdf,.txt,.docx,.md"
                   onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
-                  className="w-full px-3 py-6 bg-slate-950/40 border border-white/10 border-dashed rounded-xl text-xs text-muted-foreground cursor-pointer focus:outline-none focus:border-primary text-center"
+                  className="w-full px-3 py-5 sm:py-6 bg-slate-950/40 border border-white/10 border-dashed rounded-xl text-xs text-muted-foreground cursor-pointer focus:outline-none focus:border-primary text-center"
                 />
                 <span className="text-[10px] text-muted-foreground mt-2 block text-center">
                   Supports PDF, DOCX, TXT, MD up to 10MB
@@ -286,18 +289,22 @@ export default function KnowledgeBase() {
           {activeTab === 'crawl' && (
             <form onSubmit={handleTriggerCrawl} className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-muted-foreground uppercase mb-2">Seed URL</label>
+                <label className="block text-xs font-semibold text-muted-foreground uppercase mb-2">
+                  Seed URL
+                </label>
                 <input
                   type="url"
                   required
                   value={crawlUrl}
                   onChange={(e) => setCrawlUrl(e.target.value)}
                   placeholder="https://docs.myproduct.com"
-                  className="w-full px-3 py-2 bg-slate-950/40 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-primary text-xs"
+                  className="w-full px-3 py-2.5 bg-slate-950/40 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-primary text-xs"
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-muted-foreground uppercase mb-2">Max Pages</label>
+                <label className="block text-xs font-semibold text-muted-foreground uppercase mb-2">
+                  Max Pages
+                </label>
                 <input
                   type="number"
                   required
@@ -305,7 +312,7 @@ export default function KnowledgeBase() {
                   max={100}
                   value={maxPages}
                   onChange={(e) => setMaxPages(parseInt(e.target.value))}
-                  className="w-full px-3 py-2 bg-slate-950/40 border border-white/10 rounded-xl text-white focus:outline-none focus:border-primary text-xs"
+                  className="w-full px-3 py-2.5 bg-slate-950/40 border border-white/10 rounded-xl text-white focus:outline-none focus:border-primary text-xs"
                 />
               </div>
               <button
@@ -325,25 +332,29 @@ export default function KnowledgeBase() {
           {activeTab === 'faq' && (
             <form onSubmit={handleAddFaq} className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-muted-foreground uppercase mb-2">Question</label>
+                <label className="block text-xs font-semibold text-muted-foreground uppercase mb-2">
+                  Question
+                </label>
                 <input
                   type="text"
                   required
                   value={question}
                   onChange={(e) => setQuestion(e.target.value)}
                   placeholder="What is your return policy?"
-                  className="w-full px-3 py-2 bg-slate-950/40 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-primary text-xs"
+                  className="w-full px-3 py-2.5 bg-slate-950/40 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-primary text-xs"
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-muted-foreground uppercase mb-2">Answer</label>
+                <label className="block text-xs font-semibold text-muted-foreground uppercase mb-2">
+                  Answer
+                </label>
                 <textarea
                   required
                   rows={4}
                   value={answer}
                   onChange={(e) => setAnswer(e.target.value)}
                   placeholder="We offer a full refund within 30 days of purchase..."
-                  className="w-full px-3 py-2 bg-slate-950/40 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-primary text-xs resize-none"
+                  className="w-full px-3 py-2.5 bg-slate-950/40 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-primary text-xs resize-none"
                 />
               </div>
               <button
@@ -361,13 +372,13 @@ export default function KnowledgeBase() {
           )}
         </div>
 
-        <div className="glass p-6 rounded-2xl border border-white/5 space-y-6 lg:col-span-2 relative">
+        <div className="glass p-5 sm:p-6 rounded-2xl border border-white/5 space-y-5 lg:col-span-2 relative">
           <div className="flex justify-between items-center">
-            <h3 className="text-lg font-semibold text-white">Indexed Documents & Sources</h3>
+            <h3 className="text-base sm:text-lg font-semibold text-white">Indexed Documents &amp; Sources</h3>
           </div>
 
           {/* Similarity Search Testing */}
-          <form onSubmit={handleSearch} className="flex gap-2">
+          <form onSubmit={handleSearch} className="flex flex-col sm:flex-row gap-2">
             <input
               type="text"
               value={searchQuery}
@@ -378,14 +389,14 @@ export default function KnowledgeBase() {
             <button
               type="submit"
               disabled={searching}
-              className="px-4 py-2 bg-secondary border border-white/10 text-white rounded-xl text-xs hover:bg-white/5"
+              className="px-4 py-2 bg-secondary border border-white/10 text-white rounded-xl text-xs hover:bg-white/5 shrink-0"
             >
               {searching ? 'Searching...' : 'Search'}
             </button>
           </form>
 
           {searchResults.length > 0 && (
-            <div className="p-4 bg-slate-950/60 border border-white/5 rounded-xl space-y-2">
+            <div className="p-3 sm:p-4 bg-slate-950/60 border border-white/5 rounded-xl space-y-2">
               <div className="flex justify-between items-center">
                 <span className="text-xs font-semibold text-primary">Semantic Search Matches:</span>
                 <button
@@ -396,89 +407,119 @@ export default function KnowledgeBase() {
                   Clear Results
                 </button>
               </div>
-              <div className="space-y-2 max-h-48 overflow-y-auto">
+              <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
                 {searchResults.map((r, idx) => (
                   <div key={idx} className="p-2.5 bg-slate-900/40 border border-white/5 rounded-lg space-y-1">
-                    <div className="flex justify-between items-center text-[9px] text-slate-400">
+                    <div className="flex justify-between items-center text-[9px] text-slate-400 gap-2">
                       <span>Score: {r.score?.toFixed(4)}</span>
-                      <span className="truncate max-w-40">{r.payload?.sourceUrl || 'Manual Input'}</span>
+                      <span className="truncate max-w-[160px] sm:max-w-xs">{r.payload?.sourceUrl || 'Manual Input'}</span>
                     </div>
-                    <p className="text-[11px] text-slate-200 leading-relaxed italic">"{r.payload?.content}"</p>
+                    <p className="text-[11px] text-slate-200 leading-relaxed italic break-words">"{r.payload?.content}"</p>
                   </div>
                 ))}
               </div>
             </div>
           )}
 
-          <div className="space-y-3 max-h-[500px] overflow-y-auto pr-2">
+          <div className="space-y-3 max-h-[500px] overflow-y-auto pr-1">
             {files.length === 0 ? (
               <div className="py-12 text-center">
                 <span className="text-xs text-muted-foreground">No indexed data sources found. Get started on the left!</span>
               </div>
             ) : (
               files.map((file) => (
-                <div key={file.id} className="flex items-center justify-between p-4 bg-slate-950/40 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
-                  <div className="flex flex-col gap-1 min-w-0 pr-4">
-                    <span className="text-xs font-semibold text-white truncate max-w-[280px]" title={file.name}>{file.name}</span>
-                    <div className="flex items-center gap-2">
-                      <span className="text-[9px] px-1.5 py-0.5 rounded bg-white/5 text-muted-foreground font-mono uppercase">{file.type}</span>
+                <div
+                  key={file.id}
+                  className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 sm:p-4 bg-slate-950/40 rounded-xl border border-white/5 hover:border-white/10 transition-colors gap-3"
+                >
+                  <div className="flex flex-col gap-1 min-w-0 max-w-full">
+                    <span
+                      className="text-xs font-semibold text-white truncate max-w-full sm:max-w-[280px]"
+                      title={file.name}
+                    >
+                      {file.name}
+                    </span>
+                    <div className="flex items-center flex-wrap gap-2">
+                      <span className="text-[9px] px-1.5 py-0.5 rounded bg-white/5 text-muted-foreground font-mono uppercase">
+                        {file.type}
+                      </span>
                       <span className="text-[10px] text-muted-foreground">{file.charCount.toLocaleString()} chars</span>
                       <span className="text-[10px] text-muted-foreground">•</span>
                       <span className="text-[10px] text-muted-foreground">{file.chunkCount} vectors</span>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2">
-                    <span className={`text-[9px] px-2 py-0.5 rounded-full font-semibold ${file.status === 'completed'
-                        ? 'bg-green-500/10 text-green-400'
-                        : file.status === 'processing'
+                  <div className="flex items-center justify-between sm:justify-end gap-2 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-white/5">
+                    <span
+                      className={`text-[9px] px-2 py-0.5 rounded-full font-semibold ${
+                        file.status === 'completed'
+                          ? 'bg-green-500/10 text-green-400'
+                          : file.status === 'processing'
                           ? 'bg-yellow-500/10 text-yellow-400 animate-pulse'
                           : file.status === 'failed'
-                            ? 'bg-red-500/10 text-red-400'
-                            : 'bg-white/10 text-muted-foreground'
-                      }`}>
+                          ? 'bg-red-500/10 text-red-400'
+                          : 'bg-white/10 text-muted-foreground'
+                      }`}
+                    >
                       {file.status}
                     </span>
 
-                    {/* Edit FAQ Button */}
-                    {file.type === 'faq' && (
+                    <div className="flex items-center gap-1.5">
+                      {/* Edit FAQ Button */}
+                      {file.type === 'faq' && (
+                        <button
+                          onClick={() => {
+                            setEditingFaq(file);
+                            setEditQuestion(file.name.replace(/^FAQ:\s+/, '').replace(/\.\.\.$/, ''));
+                            setEditAnswer('');
+                          }}
+                          className="p-1.5 hover:bg-white/5 border border-white/5 rounded-lg text-muted-foreground hover:text-white transition-colors"
+                          title="Edit FAQ"
+                        >
+                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M15.232 5.232l3.536 3.536m-2.036-2.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+                            />
+                          </svg>
+                        </button>
+                      )}
+
+                      {/* Re-index Button */}
+                      {file.type !== 'faq' && (
+                        <button
+                          onClick={() => handleReindex(file.id)}
+                          className="p-1.5 hover:bg-white/5 border border-white/5 rounded-lg text-muted-foreground hover:text-white transition-colors"
+                          title="Re-index Document"
+                        >
+                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 7.89M9 11l3-3 3 3m-3-3v12"
+                            />
+                          </svg>
+                        </button>
+                      )}
+
                       <button
-                        onClick={() => {
-                          setEditingFaq(file);
-                          setEditQuestion(file.name.replace(/^FAQ:\s+/, '').replace(/\.\.\.$/, ''));
-                          setEditAnswer('');
-                        }}
-                        className="p-1.5 hover:bg-white/5 border border-white/5 rounded-lg text-muted-foreground hover:text-white transition-colors"
-                        title="Edit FAQ"
+                        onClick={() => handleDelete(file.id)}
+                        className="p-1.5 hover:bg-destructive/15 border border-white/5 hover:border-destructive/20 rounded-lg text-muted-foreground hover:text-destructive-foreground transition-colors"
+                        title="Delete Source"
                       >
                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-2.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                          />
                         </svg>
                       </button>
-                    )}
-
-                    {/* Re-index Button */}
-                    {file.type !== 'faq' && (
-                      <button
-                        onClick={() => handleReindex(file.id)}
-                        className="p-1.5 hover:bg-white/5 border border-white/5 rounded-lg text-muted-foreground hover:text-white transition-colors"
-                        title="Re-index Document"
-                      >
-                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 7.89M9 11l3-3 3 3m-3-3v12" />
-                        </svg>
-                      </button>
-                    )}
-
-                    <button
-                      onClick={() => handleDelete(file.id)}
-                      className="p-1.5 hover:bg-destructive/15 border border-white/5 hover:border-destructive/20 rounded-lg text-muted-foreground hover:text-destructive-foreground transition-colors"
-                      title="Delete Source"
-                    >
-                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                      </svg>
-                    </button>
+                    </div>
                   </div>
                 </div>
               ))
@@ -487,14 +528,14 @@ export default function KnowledgeBase() {
 
           {/* Edit FAQ Dialog Modal Overlay */}
           {editingFaq && (
-            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">
-              <div className="bg-slate-900 border border-white/10 rounded-2xl p-6 w-full max-w-md space-y-4">
+            <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">
+              <div className="bg-slate-900 border border-white/10 rounded-2xl p-5 sm:p-6 w-full max-w-md space-y-4 shadow-2xl">
                 <div className="flex justify-between items-center">
                   <h4 className="text-sm font-bold text-white">Edit FAQ Content</h4>
                   <button
                     type="button"
                     onClick={() => setEditingFaq(null)}
-                    className="text-slate-400 hover:text-white text-lg font-bold"
+                    className="p-1 text-slate-400 hover:text-white text-lg font-bold"
                   >
                     ×
                   </button>
@@ -525,14 +566,14 @@ export default function KnowledgeBase() {
                     <button
                       type="button"
                       onClick={() => setEditingFaq(null)}
-                      className="flex-1 py-2 border border-white/10 rounded-xl text-xs text-white hover:bg-white/5"
+                      className="flex-1 py-2.5 border border-white/10 rounded-xl text-xs text-white hover:bg-white/5"
                     >
                       Cancel
                     </button>
                     <button
                       type="submit"
                       disabled={savingEdit}
-                      className="flex-1 py-2 bg-primary text-primary-foreground font-semibold rounded-xl hover:opacity-90 disabled:opacity-50 text-xs"
+                      className="flex-1 py-2.5 bg-primary text-primary-foreground font-semibold rounded-xl hover:opacity-90 disabled:opacity-50 text-xs"
                     >
                       {savingEdit ? 'Saving...' : 'Save Changes'}
                     </button>

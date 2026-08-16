@@ -494,10 +494,10 @@ export default function WidgetCustomizer() {
   const isDark = settings.theme === 'dark';
 
   return (
-    <div className="space-y-8">
-      <div className="flex flex-col gap-2">
-        <h2 className="text-2xl font-bold text-white">Widget Settings</h2>
-        <p className="text-sm text-muted-foreground">
+    <div className="space-y-6 sm:space-y-8">
+      <div className="flex flex-col gap-1 sm:gap-2">
+        <h2 className="text-xl sm:text-2xl font-bold text-white">Widget Settings</h2>
+        <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
           Customize the chat widget color theme, default greetings, and suggested query templates.
         </p>
       </div>
@@ -508,12 +508,12 @@ export default function WidgetCustomizer() {
         onClose={() => setMessage({ text: '', type: '' })}
       />
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8 items-start">
         {/* Settings Form */}
-        <form onSubmit={handleSave} className="glass p-6 rounded-2xl border border-white/5 space-y-6">
-          <h3 className="text-lg font-semibold text-white">Appearance &amp; Branding</h3>
+        <form onSubmit={handleSave} className="glass p-5 sm:p-6 rounded-2xl border border-white/5 space-y-5 sm:space-y-6">
+          <h3 className="text-base sm:text-lg font-semibold text-white">Appearance &amp; Branding</h3>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-semibold text-muted-foreground uppercase mb-2">Primary Color</label>
               <div className="flex gap-2">
@@ -521,7 +521,7 @@ export default function WidgetCustomizer() {
                   type="color"
                   value={settings.primaryColor}
                   onChange={(e) => setSettings({ ...settings, primaryColor: e.target.value })}
-                  className="w-10 h-10 border border-white/10 rounded cursor-pointer bg-transparent"
+                  className="w-10 h-10 border border-white/10 rounded cursor-pointer bg-transparent shrink-0"
                 />
                 <input
                   type="text"
@@ -545,7 +545,7 @@ export default function WidgetCustomizer() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-semibold text-muted-foreground uppercase mb-2">Logo URL</label>
               <input
@@ -568,7 +568,7 @@ export default function WidgetCustomizer() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-semibold text-muted-foreground uppercase mb-2">Theme</label>
               <select
@@ -580,7 +580,7 @@ export default function WidgetCustomizer() {
                 <option value="dark">Dark</option>
               </select>
             </div>
-            <div className="flex items-center gap-2 pt-6">
+            <div className="flex items-center gap-2 pt-2 sm:pt-6">
               <input
                 type="checkbox"
                 id="voiceEnabled"
@@ -588,7 +588,9 @@ export default function WidgetCustomizer() {
                 onChange={(e) => setSettings({ ...settings, voiceEnabled: e.target.checked })}
                 className="w-4 h-4 rounded border-white/10 bg-slate-950 text-primary focus:ring-primary"
               />
-              <label htmlFor="voiceEnabled" className="text-xs font-semibold text-muted-foreground uppercase cursor-pointer">Voice Enabled</label>
+              <label htmlFor="voiceEnabled" className="text-xs font-semibold text-muted-foreground uppercase cursor-pointer">
+                Voice Enabled
+              </label>
             </div>
           </div>
 
@@ -605,7 +607,7 @@ export default function WidgetCustomizer() {
 
           <div>
             <label className="block text-xs font-semibold text-muted-foreground uppercase mb-2">Suggested Prompt Questions</label>
-            <div className="flex gap-2">
+            <div className="flex flex-col sm:flex-row gap-2">
               <input
                 type="text"
                 value={newQuestion}
@@ -617,16 +619,16 @@ export default function WidgetCustomizer() {
               <button
                 type="button"
                 onClick={handleAddQuestion}
-                className="px-4 py-2 bg-secondary border border-white/10 text-white rounded-xl text-xs hover:bg-white/5"
+                className="px-4 py-2 bg-secondary border border-white/10 text-white rounded-xl text-xs hover:bg-white/5 shrink-0"
               >
                 Add
               </button>
             </div>
             <div className="flex flex-wrap gap-2 mt-3">
               {settings.suggestedQuestions.map((q, idx) => (
-                <span key={idx} className="flex items-center gap-1.5 px-2 py-1 bg-white/5 border border-white/5 rounded-lg text-[10px] text-white">
-                  {q}
-                  <button type="button" onClick={() => handleRemoveQuestion(idx)} className="text-muted-foreground hover:text-red-400 font-bold">×</button>
+                <span key={idx} className="flex items-center gap-1.5 px-2.5 py-1 bg-white/5 border border-white/5 rounded-lg text-[10px] text-white">
+                  <span className="truncate max-w-[200px] sm:max-w-xs">{q}</span>
+                  <button type="button" onClick={() => handleRemoveQuestion(idx)} className="text-muted-foreground hover:text-red-400 font-bold ml-1">×</button>
                 </span>
               ))}
             </div>
@@ -644,12 +646,12 @@ export default function WidgetCustomizer() {
         {/* Live Demo Preview */}
         <div className="lg:sticky lg:top-8 space-y-3">
           {/* Header bar */}
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <div className="flex items-center gap-2">
               <div className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
               <span className="text-xs font-semibold text-white uppercase tracking-wider">Live Bot Tester</span>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               {messages.length > 0 && (
                 <button
                   onClick={clearChat}
@@ -658,7 +660,7 @@ export default function WidgetCustomizer() {
                   Clear Chat
                 </button>
               )}
-              <span className="text-[10px] px-2.5 py-1 rounded-lg border border-emerald-500/30 bg-emerald-500/10 text-emerald-400 font-semibold">
+              <span className="text-[10px] px-2.5 py-1 rounded-lg border border-emerald-500/30 bg-emerald-500/10 text-emerald-400 font-semibold truncate max-w-[180px] sm:max-w-xs">
                 Connected to {currentWorkspace?.name || 'Workspace'}
               </span>
             </div>
@@ -667,10 +669,10 @@ export default function WidgetCustomizer() {
           {/* Widget shell */}
           <div className={`rounded-2xl border shadow-2xl flex flex-col overflow-hidden transition-all duration-300 ${
             isDark ? 'bg-slate-950 border-white/10 text-white' : 'bg-white border-slate-200 text-slate-800'
-          }`} style={{ height: '520px' }}>
+          }`} style={{ height: '500px', maxHeight: '70vh' }}>
 
             {/* Header */}
-            <div className="p-4 flex items-center justify-between flex-shrink-0" style={{ backgroundColor: settings.primaryColor }}>
+            <div className="p-3 sm:p-4 flex items-center justify-between flex-shrink-0" style={{ backgroundColor: settings.primaryColor }}>
               <div className="flex items-center gap-2">
                 {settings.logoUrl ? (
                   <img src={settings.logoUrl} alt="Logo" className="h-5 w-auto object-contain rounded" />
