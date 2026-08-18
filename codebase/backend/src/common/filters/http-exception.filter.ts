@@ -1,14 +1,14 @@
 import { ExceptionFilter, Catch, ArgumentsHost, HttpException, HttpStatus } from '@nestjs/common';
 import { Request, Response } from 'express';
-import * as winston from 'winston';
+import { DatadogLoggerService } from '../logger/datadog-logger.service';
 
 @Catch()
 export class HttpExceptionFilter implements ExceptionFilter {
-  private readonly logger = winston.createLogger({
-    level: 'info',
-    format: winston.format.json(),
-    transports: [new winston.transports.Console()],
-  });
+  constructor(private readonly logger?: DatadogLoggerService) {
+    if (!this.logger) {
+      this.logger = new DatadogLoggerService();
+    }
+  }
 
   catch(exception: unknown, host: ArgumentsHost): void {
     const ctx = host.switchToHttp();
@@ -35,11 +35,13 @@ export class HttpExceptionFilter implements ExceptionFilter {
       message = exception.message;
     }
 
-    this.logger.error({
-      message: `HTTP Error: ${status} - ${message}`,
+    this.logger?.error(`HTTP Exception: ${status} - ${message}`, {
+      context: 'HttpExceptionFilter',
       path: request.url,
       method: request.method,
+      statusCode: status,
       timestamp: new Date().toISOString(),
+      details: errorDetails,
       stack: exception instanceof Error ? exception.stack : undefined,
     });
 
@@ -52,3 +54,4 @@ export class HttpExceptionFilter implements ExceptionFilter {
     });
   }
 }
+

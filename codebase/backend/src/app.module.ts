@@ -17,11 +17,13 @@ import { WidgetModule } from './modules/widget/widget.module';
 import { VoiceModule } from './modules/voice/voice.module';
 import { AnalyticsModule } from './modules/analytics/analytics.module';
 import { AuditLogsModule } from './modules/audit-logs/audit-logs.module';
+import { LoggerModule } from './common/logger/logger.module';
 import { AppController } from './app.controller';
 
 @Module({
   controllers: [AppController],
   imports: [
+    LoggerModule,
     ConfigModule.forRoot({
       isGlobal: true,
       validationSchema: Joi.object({
@@ -48,6 +50,14 @@ import { AppController } from './app.controller';
         AWS_SECRET_ACCESS_KEY: Joi.string().optional().allow(''),
         AWS_REGION: Joi.string().default('us-east-1'),
         AWS_S3_BUCKET_NAME: Joi.string().optional().allow(''),
+
+        // Datadog Integration
+        DD_API_KEY: Joi.string().optional().allow(''),
+        DD_SITE: Joi.string().default('us5.datadoghq.com'),
+        DD_SERVICE: Joi.string().default('jagguAi-backend'),
+        DD_ENV: Joi.string().default('development'),
+        DD_VERSION: Joi.string().default('1.0.0'),
+        DD_LOGS_ENABLED: Joi.boolean().default(false),
       }),
     }),
     MongooseModule.forRootAsync({

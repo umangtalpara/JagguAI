@@ -4,10 +4,17 @@ import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
+import { DatadogLoggerService } from './common/logger/datadog-logger.service';
+import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 
 async function bootstrap(): Promise<void> {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, {
+    bufferLogs: true,
+  });
+
+  const datadogLogger = app.get(DatadogLoggerService);
+  app.useLogger(datadogLogger);
 
   app.setGlobalPrefix('api/v1', {
     exclude: [
@@ -43,7 +50,8 @@ async function bootstrap(): Promise<void> {
     forbidNonWhitelisted: true,
   }));
 
-  app.useGlobalFilters(new HttpExceptionFilter());
+  app.useGlobalInterceptors(new LoggingInterceptor(datadogLogger));
+  app.useGlobalFilters(new HttpExceptionFilter(datadogLogger));
 
   const config = new DocumentBuilder()
     .setTitle('jagguAI API')
@@ -57,11 +65,10 @@ async function bootstrap(): Promise<void> {
 
   const port = Number(process.env['PORT']) || 3001;
   await app.listen(port, '0.0.0.0');
-  console.log(`Application is running on: http://0.0.0.0:${port}/api/v1`);
-  console.log(`Swagger documentation is available on: http://0.0.0.0:${port}/api/v1/docs`);
-  console.log(`Health check available at: http://0.0.0.0:${port}/api/v1/health`);
+  datadogLogger.log(`Application is running on: http://0.0.0.0:${port}/api/v1`, 'Bootstrap');
+  datadogLogger.log(`Swagger documentation is available on: http://0.0.0.0:${port}/api/v1/docs`, 'Bootstrap');
+  datadogLogger.log(`Health check available at: http://0.0.0.0:${port}/api/v1/health`, 'Bootstrap');
 }
 
-// Wait! We can't do NestFactory.create(app) because app isn't defined yet! It should be AppModule.
-// Let's write the correct code.
 bootstrap();
+
