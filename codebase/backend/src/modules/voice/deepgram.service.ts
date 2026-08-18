@@ -9,14 +9,33 @@ export class DeepgramService {
     this.apiKey = this.configService.get<string>('DEEPGRAM_API_KEY');
   }
 
-  async transcribe(audioBuffer: Buffer, mimeType = 'audio/webm'): Promise<string> {
+  async transcribe(
+    audioBuffer: Buffer,
+    mimeType = 'audio/webm',
+    keywords?: string[],
+  ): Promise<string> {
     if (!this.apiKey) {
       console.warn('DEEPGRAM_API_KEY not configured. Returning mock transcription.');
       return 'What are your support working hours?';
     }
 
     try {
-      const response = await fetch('https://api.deepgram.com/v1/listen?smart_format=true&model=nova-2', {
+      const params = new URLSearchParams({
+        model: 'nova-2',
+        smart_format: 'true',
+        punctuate: 'true',
+        language: 'en',
+      });
+
+      if (keywords && keywords.length > 0) {
+        keywords.forEach(kw => {
+          if (kw && kw.trim()) {
+            params.append('keywords', kw.trim());
+          }
+        });
+      }
+
+      const response = await fetch(`https://api.deepgram.com/v1/listen?${params.toString()}`, {
         method: 'POST',
         headers: {
           Authorization: `Token ${this.apiKey}`,

@@ -187,35 +187,14 @@ function WidgetContent() {
   const startRecording = async () => {
     setInputText('');
 
-    if (typeof window !== 'undefined') {
-      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-      if (SpeechRecognition) {
-        try {
-          const recognition = new SpeechRecognition();
-          recognition.continuous = true;
-          recognition.interimResults = true;
-          recognition.lang = 'en-US';
-
-          recognition.onresult = (event: any) => {
-            let liveTranscript = '';
-            for (let i = 0; i < event.results.length; i++) {
-              liveTranscript += event.results[i][0].transcript;
-            }
-            if (liveTranscript) {
-              setInputText(liveTranscript);
-            }
-          };
-
-          recognition.start();
-          recognitionRef.current = recognition;
-        } catch (e) {
-          console.warn('Speech recognition error:', e);
-        }
-      }
-    }
-
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+        },
+      });
       const options = typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported('audio/webm')
         ? { mimeType: 'audio/webm' }
         : typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported('audio/mp4')

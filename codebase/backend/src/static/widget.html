@@ -528,59 +528,94 @@
       messagesBox.scrollTop = messagesBox.scrollHeight;
     }
 
-    // Voice recognition
+    // Deepgram Voice Audio Capture & STT Pipeline
     let isRecording = false;
-    let recognition = null;
-    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
-      const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
-      recognition = new SpeechRec();
-      recognition.continuous = false;
-      recognition.interimResults = false;
-      recognition.lang = 'en-US';
-
-      recognition.onstart = () => {
-        isRecording = true;
-        micBtn.classList.add('recording');
-        chatInput.placeholder = 'Listening to your voice...';
-      };
-
-      recognition.onresult = (event) => {
-        let transcript = event.results[0][0].transcript;
-        // Clean speech-to-text misrecognition
-        transcript = transcript.replace(/\b(porn\s*pic|porn\s*peak|prove\s*and\s*peak)\b/gi, 'ProvenPeak');
-        chatInput.value = transcript;
-        sendMessage(transcript);
-      };
-
-      recognition.onerror = () => {
-        stopVoice();
-      };
-
-      recognition.onend = () => {
-        stopVoice();
-      };
-    }
+    let mediaRecorder = null;
+    let audioChunks = [];
+    let audioStream = null;
 
     function stopVoice() {
       isRecording = false;
       micBtn.classList.remove('recording');
       chatInput.placeholder = 'Type your question...';
+      if (audioStream) {
+        audioStream.getTracks().forEach(track => track.stop());
+        audioStream = null;
+      }
+    }
+
+    async function startVoiceRecording() {
+      try {
+        audioChunks = [];
+        audioStream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true,
+          }
+        });
+
+        const options = typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported('audio/webm')
+          ? { mimeType: 'audio/webm' }
+          : typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported('audio/mp4')
+          ? { mimeType: 'audio/mp4' }
+          : undefined;
+
+        mediaRecorder = new MediaRecorder(audioStream, options);
+
+        mediaRecorder.ondataavailable = (e) => {
+          if (e.data && e.data.size > 0) {
+            audioChunks.push(e.data);
+          }
+        };
+
+        mediaRecorder.onstop = async () => {
+          chatInput.placeholder = 'Transcribing with Deepgram...';
+          const mimeType = mediaRecorder.mimeType || 'audio/webm';
+          const audioBlob = new Blob(audioChunks, { type: mimeType });
+
+          if (audioBlob.size > 100) {
+            const formData = new FormData();
+            formData.append('file', audioBlob, 'audio.webm');
+
+            try {
+              const res = await fetch(apiBase + '/voice/transcribe', {
+                method: 'POST',
+                body: formData
+              });
+              if (res.ok) {
+                const data = await res.json();
+                if (data.transcript && data.transcript.trim()) {
+                  const finalTranscript = data.transcript.trim();
+                  chatInput.value = finalTranscript;
+                  sendMessage(finalTranscript);
+                }
+              }
+            } catch (err) {
+              console.error('Deepgram transcription error:', err);
+            }
+          }
+          stopVoice();
+        };
+
+        mediaRecorder.start();
+        isRecording = true;
+        micBtn.classList.add('recording');
+        chatInput.placeholder = 'Listening... Tap mic again to finish';
+      } catch (err) {
+        console.error('Microphone access error:', err);
+        alert('Could not access microphone. Please ensure microphone permissions are allowed.');
+        stopVoice();
+      }
     }
 
     micBtn.onclick = () => {
-      if (!recognition) {
-        alert('Voice recognition is not supported in this browser.');
-        return;
-      }
       if (isRecording) {
-        recognition.stop();
-        stopVoice();
-      } else {
-        try {
-          recognition.start();
-        } catch (e) {
-          stopVoice();
+        if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+          mediaRecorder.stop();
         }
+      } else {
+        startVoiceRecording();
       }
     };
 

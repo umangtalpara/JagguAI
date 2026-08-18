@@ -3,11 +3,29 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiTags, ApiOperation, ApiConsumes, ApiBody } from '@nestjs/swagger';
 import { Response } from 'express';
 import { VoiceService } from './voice.service';
+import { DeepgramService } from './deepgram.service';
 
 @ApiTags('voice')
 @Controller('voice')
 export class VoiceController {
-  constructor(private readonly voiceService: VoiceService) {}
+  constructor(
+    private readonly voiceService: VoiceService,
+    private readonly deepgramService: DeepgramService,
+  ) {}
+
+  @Post('transcribe')
+  @UseInterceptors(FileInterceptor('file'))
+  @ApiConsumes('multipart/form-data')
+  @ApiOperation({ summary: 'Transcribe audio buffer using Deepgram STT' })
+  async transcribeAudio(
+    @UploadedFile() file: Express.Multer.File,
+  ): Promise<{ transcript: string }> {
+    const transcript = await this.deepgramService.transcribe(
+      file?.buffer || Buffer.alloc(0),
+      file?.mimetype || 'audio/webm',
+    );
+    return { transcript };
+  }
 
   @Post('workspaces/:workspaceId/process')
   @UseInterceptors(FileInterceptor('file'))
