@@ -443,10 +443,19 @@ export default function KnowledgeBase() {
                       <span className="text-[9px] px-1.5 py-0.5 rounded bg-white/5 text-muted-foreground font-mono uppercase">
                         {file.type}
                       </span>
-                      <span className="text-[10px] text-muted-foreground">{file.charCount.toLocaleString()} chars</span>
-                      <span className="text-[10px] text-muted-foreground">•</span>
-                      <span className="text-[10px] text-muted-foreground">{file.chunkCount} vectors</span>
+                      {file.status !== 'failed' && (
+                        <>
+                          <span className="text-[10px] text-muted-foreground">{file.charCount.toLocaleString()} chars</span>
+                          <span className="text-[10px] text-muted-foreground">•</span>
+                          <span className="text-[10px] text-muted-foreground">{file.chunkCount} vectors</span>
+                        </>
+                      )}
                     </div>
+                    {file.error && (
+                      <p className="text-[10px] text-red-400 bg-red-500/10 border border-red-500/20 rounded px-2 py-1 mt-1 break-words">
+                        {file.error}
+                      </p>
+                    )}
                   </div>
 
                   <div className="flex items-center justify-between sm:justify-end gap-2 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-white/5">
