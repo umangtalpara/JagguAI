@@ -165,47 +165,6 @@
     .bubble-text {
       white-space: pre-wrap;
     }
-    /* Citations / Sources Badge Container */
-    .sources-container {
-      margin-top: 4px;
-      padding-top: 8px;
-      border-top: 1px solid rgba(255,255,255,0.08);
-      display: flex;
-      flex-direction: column;
-      gap: 5px;
-    }
-    .sources-label {
-      font-size: 10.5px;
-      font-weight: 700;
-      color: #94a3b8;
-      text-transform: uppercase;
-      letter-spacing: 0.4px;
-    }
-    .sources-pills {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 5px;
-    }
-    .source-pill {
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-      padding: 3px 8px;
-      border-radius: 8px;
-      background: rgba(37, 99, 235, 0.15);
-      border: 1px solid rgba(37, 99, 235, 0.3);
-      color: #60a5fa;
-      font-size: 11px;
-      font-weight: 500;
-      text-decoration: none;
-      transition: all 0.2s;
-    }
-    .source-pill:hover {
-      background: rgba(37, 99, 235, 0.3);
-      border-color: rgba(37, 99, 235, 0.6);
-      color: #ffffff;
-      transform: translateY(-1px);
-    }
     .lead-form-container {
       flex: 1;
       display: flex;
@@ -461,7 +420,7 @@
       window.parent.postMessage('jaggu-close-widget', '*');
     };
 
-    function appendMessage(role, text, sources) {
+    function appendMessage(role, text) {
       const row = document.createElement('div');
       row.className = 'message-row ' + (role === 'user' ? 'user' : 'bot');
 
@@ -487,45 +446,7 @@
       messagesBox.appendChild(row);
       messagesBox.scrollTop = messagesBox.scrollHeight;
 
-      if (sources && sources.length > 0) {
-        renderCitations(bubble, sources);
-      }
-
       return { bubble, textDiv };
-    }
-
-    function renderCitations(bubbleEl, sources) {
-      if (!sources || sources.length === 0) return;
-      if (bubbleEl.querySelector('.sources-container')) return;
-
-      const sourcesDiv = document.createElement('div');
-      sourcesDiv.className = 'sources-container';
-      sourcesDiv.innerHTML = '<span class="sources-label">📚 Verified Sources:</span>';
-
-      const pills = document.createElement('div');
-      pills.className = 'sources-pills';
-      sources.forEach(s => {
-        const a = document.createElement('a');
-        a.className = 'source-pill';
-        a.href = s.url;
-        a.target = '_blank';
-        a.rel = 'noopener noreferrer';
-        let cleanTitle = s.title;
-        if (!cleanTitle || cleanTitle === 'Source Document') {
-          try {
-            const parsed = new URL(s.url);
-            cleanTitle = parsed.pathname === '/' || !parsed.pathname ? parsed.hostname : parsed.pathname.replace(/^\//, '');
-          } catch(e) {
-            cleanTitle = 'Source Link';
-          }
-        }
-        a.textContent = '🔗 ' + cleanTitle;
-        pills.appendChild(a);
-      });
-
-      sourcesDiv.appendChild(pills);
-      bubbleEl.appendChild(sourcesDiv);
-      messagesBox.scrollTop = messagesBox.scrollHeight;
     }
 
     // Deepgram Voice Audio Capture & STT Pipeline
@@ -710,7 +631,6 @@
         const reader = res.body.getReader();
         const decoder = new TextDecoder();
         let fullText = '';
-        let citations = [];
 
         botObj.textDiv.textContent = '';
 
@@ -725,18 +645,8 @@
               if (rawData === '[DONE]') continue;
               try {
                 const data = JSON.parse(rawData);
-                if (data.sources) {
-                  citations = data.sources;
-                }
                 if (data.token) {
-                  if (data.token.startsWith('[METADATA]:')) {
-                    try {
-                      const meta = JSON.parse(data.token.substring(11).trim());
-                      if (meta.sources) {
-                        citations = meta.sources;
-                      }
-                    } catch (e) {}
-                  } else {
+                  if (!data.token.startsWith('[METADATA]:')) {
                     fullText += data.token;
                     botObj.textDiv.textContent = fullText;
                     messagesBox.scrollTop = messagesBox.scrollHeight;
@@ -749,8 +659,6 @@
 
         if (!fullText) {
           botObj.textDiv.textContent = 'Thanks for your query! I have processed your request.';
-        } else if (citations.length > 0) {
-          renderCitations(botObj.bubble, citations);
         }
       } catch (err) {
         botObj.textDiv.textContent = 'Connection error. Please check your network or API Key.';
