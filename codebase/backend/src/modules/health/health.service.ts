@@ -168,21 +168,41 @@ export class HealthService {
     const qdrant = qdrantRes.status === 'fulfilled' ? qdrantRes.value : { status: 'error', message: (qdrantRes as any).reason?.message };
     const deepgram = deepgramRes.status === 'fulfilled' ? deepgramRes.value : { status: 'error', message: (deepgramRes as any).reason?.message };
 
-    const hasErrors = [database, redis, llm, embeddings, qdrant, deepgram].some(
-      (s) => s.status === 'error',
-    );
+    const services = {
+      database: database as ServiceHealthResult,
+      redis: redis as ServiceHealthResult,
+      llm: llm as ServiceHealthResult,
+      embeddings: embeddings as ServiceHealthResult,
+      qdrant: qdrant as ServiceHealthResult,
+      deepgram: deepgram as ServiceHealthResult,
+    };
+
+    const hasErrors = Object.values(services).some((s) => s.status === 'error');
+
+    if (hasErrors) {
+      const failedServices = Object.entries(services)
+        .filter(([_, res]) => res.status === 'error')
+        .map(([name, res]) => `${name}: ${res.message || 'unknown error'}`)
+        .join(' | ');
+
+      this.logger.error(`[Datadog] Health check degraded - issues found in: ${failedServices}`, {
+        context: 'HealthCheck',
+        overallStatus: 'degraded',
+        failedCount: Object.values(services).filter((s) => s.status === 'error').length,
+        services,
+      });
+    } else {
+      this.logger.log(`[Datadog] 12-hour deep health check healthy for all upstream services`, {
+        context: 'HealthCheck',
+        overallStatus: 'ok',
+        services,
+      });
+    }
 
     return {
       timestamp: new Date().toISOString(),
       overallStatus: hasErrors ? 'degraded' : 'ok',
-      services: {
-        database: database as ServiceHealthResult,
-        redis: redis as ServiceHealthResult,
-        llm: llm as ServiceHealthResult,
-        embeddings: embeddings as ServiceHealthResult,
-        qdrant: qdrant as ServiceHealthResult,
-        deepgram: deepgram as ServiceHealthResult,
-      },
+      services,
     };
   }
 
