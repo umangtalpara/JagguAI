@@ -18,12 +18,14 @@ import { VoiceModule } from './modules/voice/voice.module';
 import { AnalyticsModule } from './modules/analytics/analytics.module';
 import { AuditLogsModule } from './modules/audit-logs/audit-logs.module';
 import { LoggerModule } from './common/logger/logger.module';
+import { HealthModule } from './modules/health/health.module';
 import { AppController } from './app.controller';
 
 @Module({
   controllers: [AppController],
   imports: [
     LoggerModule,
+    HealthModule,
     ConfigModule.forRoot({
       isGlobal: true,
       validationSchema: Joi.object({

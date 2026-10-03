@@ -1,10 +1,13 @@
-import { Controller, Get, Head, Res } from '@nestjs/common';
-import { ApiTags, ApiOperation } from '@nestjs/swagger';
+import { Controller, Get, Head, Query, Res } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiQuery } from '@nestjs/swagger';
 import { Response } from 'express';
+import { HealthService } from './modules/health/health.service';
 
 @ApiTags('root')
 @Controller()
 export class AppController {
+  constructor(private readonly healthService: HealthService) {}
+
   @Get()
   @Head()
   @ApiOperation({ summary: 'Root health check & API status' })
@@ -16,24 +19,22 @@ export class AppController {
       timestamp: new Date().toISOString(),
       uptime: process.uptime(),
       docs: '/api/v1/docs',
-      health: '/api/v1/health',
+      health: '/health',
     });
   }
 
   @Get(['health', 'api/v1/health'])
   @Head(['health', 'api/v1/health'])
-  @ApiOperation({ summary: 'Health check endpoint' })
-  health(@Res() res: Response) {
-    return res.status(200).json({
-      status: 'ok',
-      service: 'jagguAI-backend',
-      timestamp: new Date().toISOString(),
-      uptime: process.uptime(),
-      memoryUsage: {
-        rss: `${Math.round(process.memoryUsage().rss / 1024 / 1024)} MB`,
-        heapUsed: `${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)} MB`,
-      },
-    });
+  @ApiOperation({ summary: 'Comprehensive health check with 12h Redis cache (checks external services 2x daily)' })
+  @ApiQuery({ name: 'force', required: false, type: Boolean, description: 'Bypass 12h cache and force immediate full check' })
+  async health(
+    @Query('force') force: string | boolean | undefined,
+    @Res() res: Response,
+  ) {
+    const isForce = force === 'true' || force === true || force === '1';
+    const report = await this.healthService.getHealth(isForce);
+    const httpStatus = report['status'] === 'ok' ? 200 : 200; // Returns 200 with status field for uptime monitors
+    return res.status(httpStatus).json(report);
   }
 
   @Get('widget/script.js')

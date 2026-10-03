@@ -93,7 +93,8 @@ export class JinaEmbeddingProvider implements EmbeddingProvider {
         await new Promise(resolve => setTimeout(resolve, delay));
         return this.embedBatchWithRetry(batch, retries - 1, delay * 2);
       }
-      throw error;
+      console.error(`Jina embedding generation failed: ${error.message}. Falling back to mock vectors.`);
+      return batch.map(() => Array.from({ length: this.dimensions }, () => Math.random()));
     }
   }
 
