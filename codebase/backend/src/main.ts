@@ -19,6 +19,7 @@ async function bootstrap(): Promise<void> {
   app.setGlobalPrefix('api/v1', {
     exclude: [
       { path: '', method: RequestMethod.ALL },
+      { path: 'favicon.ico', method: RequestMethod.ALL },
       { path: 'health', method: RequestMethod.ALL },
       { path: 'widget', method: RequestMethod.ALL },
       { path: 'widget/script.js', method: RequestMethod.ALL },

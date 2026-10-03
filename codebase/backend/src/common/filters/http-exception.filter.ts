@@ -35,15 +35,18 @@ export class HttpExceptionFilter implements ExceptionFilter {
       message = exception.message;
     }
 
-    this.logger?.error(`HTTP Exception: ${status} - ${message}`, {
-      context: 'HttpExceptionFilter',
-      path: request.url,
-      method: request.method,
-      statusCode: status,
-      timestamp: new Date().toISOString(),
-      details: errorDetails,
-      stack: exception instanceof Error ? exception.stack : undefined,
-    });
+    const isFavicon = request.url?.includes('favicon.ico');
+    if (!isFavicon) {
+      this.logger?.error(`HTTP Exception: ${status} - ${message}`, {
+        context: 'HttpExceptionFilter',
+        path: request.url,
+        method: request.method,
+        statusCode: status,
+        timestamp: new Date().toISOString(),
+        details: errorDetails,
+        stack: exception instanceof Error ? exception.stack : undefined,
+      });
+    }
 
     response.status(status).json({
       statusCode: status,

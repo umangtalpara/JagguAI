@@ -48,4 +48,10 @@ export class AppController {
   rootWidgetHtml(@Res() res: Response) {
     res.sendFile(require('path').join(__dirname, 'static', 'widget.html'));
   }
+
+  @Get(['favicon.ico', 'api/v1/favicon.ico'])
+  @ApiOperation({ summary: 'Favicon handler' })
+  favicon(@Res() res: Response) {
+    return res.status(204).end();
+  }
 }
